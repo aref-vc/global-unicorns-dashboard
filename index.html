@@ -627,6 +627,10 @@
                 renderIndustryValuation();
                 renderIndustryAvg();
                 renderIndustryCountry();
+                renderYearCount();
+                renderIndustryTrend();
+                renderYearValuation();
+                renderCumulative();
 
                 console.log('Dashboard initialized with', DATA.length, 'unicorns');
             } catch (error) {
@@ -1341,6 +1345,364 @@
                 .attr('fill', COLORS.textTertiary)
                 .attr('font-size', '8px')
                 .text(d => d.length > 15 ? d.slice(0, 12) + '...' : d);
+        }
+
+        // Section 4: Temporal Analysis
+
+        // 4a: Unicorn Births by Year (line chart)
+        function renderYearCount() {
+            const container = document.getElementById('year-count-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight || 280;
+            const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+
+            // Aggregate data
+            const yearData = d3.rollup(DATA, v => v.length, d => d.Year);
+            const data = Array.from(yearData, ([year, count]) => ({ year, count }))
+                .filter(d => d.year >= 2012)
+                .sort((a, b) => a.year - b.year);
+
+            const svg = d3.select('#year-count-container')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const x = d3.scaleLinear()
+                .domain(d3.extent(data, d => d.year))
+                .range([margin.left, width - margin.right]);
+
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.count) * 1.1])
+                .range([height - margin.bottom, margin.top]);
+
+            // Area
+            const area = d3.area()
+                .x(d => x(d.year))
+                .y0(height - margin.bottom)
+                .y1(d => y(d.count))
+                .curve(d3.curveMonotoneX);
+
+            svg.append('path')
+                .datum(data)
+                .attr('fill', COLORS.lime)
+                .attr('fill-opacity', 0.2)
+                .attr('d', area);
+
+            // Line
+            const line = d3.line()
+                .x(d => x(d.year))
+                .y(d => y(d.count))
+                .curve(d3.curveMonotoneX);
+
+            svg.append('path')
+                .datum(data)
+                .attr('fill', 'none')
+                .attr('stroke', COLORS.lime)
+                .attr('stroke-width', 2.5)
+                .attr('d', line);
+
+            // Dots
+            svg.selectAll('circle')
+                .data(data)
+                .join('circle')
+                .attr('cx', d => x(d.year))
+                .attr('cy', d => y(d.count))
+                .attr('r', 4)
+                .attr('fill', COLORS.lime)
+                .attr('stroke', '#10100E')
+                .attr('stroke-width', 2)
+                .on('mouseover', function(event, d) {
+                    d3.select(this).attr('r', 6);
+                    showTooltip(event, d.year, d.count + ' unicorns', 'New unicorns created');
+                })
+                .on('mouseout', function() {
+                    d3.select(this).attr('r', 4);
+                    hideTooltip();
+                });
+
+            // X axis
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(0, ${height - margin.bottom})`)
+                .call(d3.axisBottom(x).ticks(7).tickFormat(d3.format('d')));
+
+            // Y axis
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(${margin.left}, 0)`)
+                .call(d3.axisLeft(y).ticks(5));
+
+            // Highlight 2021
+            const peak = data.find(d => d.year === 2021);
+            if (peak) {
+                svg.append('text')
+                    .attr('x', x(2021))
+                    .attr('y', y(peak.count) - 12)
+                    .attr('text-anchor', 'middle')
+                    .attr('fill', COLORS.lime)
+                    .attr('font-size', '11px')
+                    .attr('font-weight', '600')
+                    .text('463 (Peak)');
+            }
+        }
+
+        // 4b: Industry Trends Over Time (stacked area)
+        function renderIndustryTrend() {
+            const container = document.getElementById('industry-trend-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight || 280;
+            const margin = { top: 20, right: 100, bottom: 40, left: 50 };
+
+            const industries = ['Enterprise Tech', 'Financial Services', 'Consumer & Retail', 'Industrials', 'Healthcare & Life Sciences'];
+            const years = d3.range(2015, 2026);
+
+            // Prepare data
+            const data = years.map(year => {
+                const yearData = DATA.filter(d => d.Year === year);
+                const row = { year };
+                industries.forEach(ind => {
+                    row[ind] = yearData.filter(d => d.Industry === ind).length;
+                });
+                return row;
+            });
+
+            const svg = d3.select('#industry-trend-container')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const stack = d3.stack().keys(industries);
+            const series = stack(data);
+
+            const x = d3.scaleLinear()
+                .domain(d3.extent(years))
+                .range([margin.left, width - margin.right]);
+
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(series, s => d3.max(s, d => d[1]))])
+                .range([height - margin.bottom, margin.top]);
+
+            const area = d3.area()
+                .x(d => x(d.data.year))
+                .y0(d => y(d[0]))
+                .y1(d => y(d[1]))
+                .curve(d3.curveMonotoneX);
+
+            svg.selectAll('path.area')
+                .data(series)
+                .join('path')
+                .attr('class', 'area')
+                .attr('d', area)
+                .attr('fill', d => INDUSTRY_COLORS[d.key])
+                .attr('opacity', 0.8)
+                .on('mouseover', function(event, d) {
+                    d3.select(this).attr('opacity', 1);
+                    const total = d3.sum(d, item => item[1] - item[0]);
+                    showTooltip(event, d.key, total + ' unicorns', '2015-2025 total');
+                })
+                .on('mouseout', function() {
+                    d3.select(this).attr('opacity', 0.8);
+                    hideTooltip();
+                });
+
+            // X axis
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(0, ${height - margin.bottom})`)
+                .call(d3.axisBottom(x).ticks(6).tickFormat(d3.format('d')));
+
+            // Y axis
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(${margin.left}, 0)`)
+                .call(d3.axisLeft(y).ticks(5));
+
+            // Legend
+            const legend = svg.selectAll('.legend')
+                .data(industries)
+                .join('g')
+                .attr('class', 'legend')
+                .attr('transform', (d, i) => `translate(${width - margin.right + 8}, ${margin.top + i * 16})`);
+
+            legend.append('rect')
+                .attr('width', 10)
+                .attr('height', 10)
+                .attr('fill', d => INDUSTRY_COLORS[d])
+                .attr('rx', 2);
+
+            legend.append('text')
+                .attr('x', 14)
+                .attr('y', 9)
+                .attr('fill', COLORS.textTertiary)
+                .attr('font-size', '8px')
+                .text(d => d.length > 12 ? d.slice(0, 10) + '...' : d);
+        }
+
+        // 4c: Valuation Added by Year (bar chart)
+        function renderYearValuation() {
+            const container = document.getElementById('year-valuation-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight || 280;
+            const margin = { top: 20, right: 30, bottom: 40, left: 60 };
+
+            // Aggregate data
+            const yearData = d3.rollup(DATA, v => d3.sum(v, d => d.Valuation), d => d.Year);
+            const data = Array.from(yearData, ([year, valuation]) => ({ year, valuation }))
+                .filter(d => d.year >= 2012)
+                .sort((a, b) => a.year - b.year);
+
+            const svg = d3.select('#year-valuation-container')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const x = d3.scaleBand()
+                .domain(data.map(d => d.year))
+                .range([margin.left, width - margin.right])
+                .padding(0.2);
+
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.valuation) * 1.1])
+                .range([height - margin.bottom, margin.top]);
+
+            // Bars
+            svg.selectAll('rect')
+                .data(data)
+                .join('rect')
+                .attr('x', d => x(d.year))
+                .attr('y', d => y(d.valuation))
+                .attr('width', x.bandwidth())
+                .attr('height', d => height - margin.bottom - y(d.valuation))
+                .attr('fill', d => d.year === 2021 ? COLORS.lime : COLORS.amber)
+                .attr('opacity', 0.85)
+                .attr('rx', 2)
+                .on('mouseover', function(event, d) {
+                    d3.select(this).attr('opacity', 1);
+                    showTooltip(event, d.year, '$' + d.valuation.toFixed(1) + 'B', 'New valuation added');
+                })
+                .on('mouseout', function() {
+                    d3.select(this).attr('opacity', 0.85);
+                    hideTooltip();
+                });
+
+            // X axis
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(0, ${height - margin.bottom})`)
+                .call(d3.axisBottom(x).tickSize(0).tickValues(data.filter((d, i) => i % 2 === 0).map(d => d.year)))
+                .selectAll('text')
+                .style('font-size', '9px');
+
+            // Y axis
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(${margin.left}, 0)`)
+                .call(d3.axisLeft(y).ticks(5).tickFormat(d => '$' + (d >= 1000 ? (d/1000).toFixed(0) + 'T' : d.toFixed(0) + 'B')));
+        }
+
+        // 4d: Cumulative Growth (dual-axis line)
+        function renderCumulative() {
+            const container = document.getElementById('cumulative-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight || 280;
+            const margin = { top: 20, right: 60, bottom: 40, left: 50 };
+
+            // Aggregate data
+            const yearData = d3.rollup(DATA, v => ({ count: v.length, valuation: d3.sum(v, d => d.Valuation) }), d => d.Year);
+            let cumCount = 0, cumVal = 0;
+            const data = Array.from(yearData, ([year, stats]) => ({ year, count: stats.count, valuation: stats.valuation }))
+                .filter(d => d.year >= 2012)
+                .sort((a, b) => a.year - b.year)
+                .map(d => {
+                    cumCount += d.count;
+                    cumVal += d.valuation;
+                    return { year: d.year, cumCount, cumVal };
+                });
+
+            const svg = d3.select('#cumulative-container')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const x = d3.scaleLinear()
+                .domain(d3.extent(data, d => d.year))
+                .range([margin.left, width - margin.right]);
+
+            const yCount = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.cumCount)])
+                .range([height - margin.bottom, margin.top]);
+
+            const yVal = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.cumVal)])
+                .range([height - margin.bottom, margin.top]);
+
+            // Count line
+            const lineCount = d3.line()
+                .x(d => x(d.year))
+                .y(d => yCount(d.cumCount))
+                .curve(d3.curveMonotoneX);
+
+            svg.append('path')
+                .datum(data)
+                .attr('fill', 'none')
+                .attr('stroke', COLORS.cyan)
+                .attr('stroke-width', 2.5)
+                .attr('d', lineCount);
+
+            // Valuation line
+            const lineVal = d3.line()
+                .x(d => x(d.year))
+                .y(d => yVal(d.cumVal))
+                .curve(d3.curveMonotoneX);
+
+            svg.append('path')
+                .datum(data)
+                .attr('fill', 'none')
+                .attr('stroke', COLORS.emerald)
+                .attr('stroke-width', 2.5)
+                .attr('d', lineVal);
+
+            // Dots for count
+            svg.selectAll('circle.count')
+                .data(data)
+                .join('circle')
+                .attr('class', 'count')
+                .attr('cx', d => x(d.year))
+                .attr('cy', d => yCount(d.cumCount))
+                .attr('r', 3)
+                .attr('fill', COLORS.cyan)
+                .on('mouseover', function(event, d) {
+                    showTooltip(event, d.year, d.cumCount + ' total unicorns', 'Cumulative count');
+                })
+                .on('mouseout', hideTooltip);
+
+            // X axis
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(0, ${height - margin.bottom})`)
+                .call(d3.axisBottom(x).ticks(7).tickFormat(d3.format('d')));
+
+            // Y axis left (count)
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(${margin.left}, 0)`)
+                .call(d3.axisLeft(yCount).ticks(5))
+                .selectAll('text')
+                .attr('fill', COLORS.cyan);
+
+            // Y axis right (valuation)
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(${width - margin.right}, 0)`)
+                .call(d3.axisRight(yVal).ticks(5).tickFormat(d => '$' + (d/1000).toFixed(1) + 'T'))
+                .selectAll('text')
+                .attr('fill', COLORS.emerald);
+
+            // Legend
+            svg.append('circle').attr('cx', margin.left + 10).attr('cy', margin.top).attr('r', 5).attr('fill', COLORS.cyan);
+            svg.append('text').attr('x', margin.left + 20).attr('y', margin.top + 4).attr('fill', COLORS.textTertiary).attr('font-size', '10px').text('Count');
+            svg.append('circle').attr('cx', margin.left + 70).attr('cy', margin.top).attr('r', 5).attr('fill', COLORS.emerald);
+            svg.append('text').attr('x', margin.left + 80).attr('y', margin.top + 4).attr('fill', COLORS.textTertiary).attr('font-size', '10px').text('Valuation');
         }
 
         // Initialize on load
