@@ -2785,12 +2785,14 @@
             const filtered = getFilteredData();
 
             // Sample data for performance (max 300 points for beeswarm)
-            let data = filtered.map(d => ({
-                company: d.Company,
-                valuation: d.Valuation,
-                industry: d.Industry,
-                country: d.Country
-            }));
+            let data = filtered
+                .filter(d => d.Valuation && d.Valuation > 0) // Ensure valid valuations
+                .map(d => ({
+                    company: d.Company,
+                    valuation: d.Valuation,
+                    industry: d.Industry,
+                    country: d.Country
+                }));
 
             // Sort by valuation and sample if too many
             data = data.sort((a, b) => a.valuation - b.valuation);
@@ -2810,11 +2812,18 @@
                 .attr('height', height);
 
             // Use log scale for x-axis given the wide range of valuations
+            const maxVal = d3.max(data, d => d.valuation) || 100;
             const x = d3.scaleLog()
-                .domain([0.9, d3.max(data, d => d.valuation) * 1.2])
+                .domain([0.9, maxVal * 1.2])
                 .range([margin.left, width - margin.right]);
 
             const radius = Math.max(2, Math.min(5, 150 / Math.sqrt(data.length)));
+
+            // Initialize positions for simulation
+            data.forEach(d => {
+                d.x = x(d.valuation);
+                d.y = height / 2 + (Math.random() - 0.5) * 50;
+            });
 
             // Beeswarm simulation - dodge points vertically to avoid overlap
             const simulation = d3.forceSimulation(data)
@@ -2826,9 +2835,10 @@
             // Run simulation
             for (let i = 0; i < 120; i++) simulation.tick();
 
-            // Constrain y positions
+            // Constrain y positions and ensure valid x
             data.forEach(d => {
-                d.y = Math.max(margin.top + radius, Math.min(height - margin.bottom - radius, d.y));
+                d.x = isNaN(d.x) ? margin.left : d.x;
+                d.y = Math.max(margin.top + radius, Math.min(height - margin.bottom - radius, d.y || height/2));
             });
 
             // Draw dots
