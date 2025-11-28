@@ -639,6 +639,10 @@
                 renderInvestorType();
                 renderInvestorDiversification();
                 renderInvestorValue();
+                renderValuationHistogram();
+                renderValuationPie();
+                renderValuationRange();
+                renderAgeValuation();
 
                 console.log('Dashboard initialized with', DATA.length, 'unicorns');
             } catch (error) {
@@ -2376,6 +2380,360 @@
                 .attr('fill', COLORS.textTertiary)
                 .attr('font-size', '10px')
                 .text(d => '$' + d.avgVal.toFixed(1) + 'B');
+        }
+
+        // Section 7: Valuation Distribution
+
+        // 7a: Valuation Buckets (histogram)
+        function renderValuationHistogram() {
+            const container = document.getElementById('valuation-histogram-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight || 280;
+            const margin = { top: 20, right: 30, bottom: 50, left: 50 };
+
+            // Create buckets
+            const buckets = [
+                { label: '1-2B', min: 1, max: 2 },
+                { label: '2-5B', min: 2, max: 5 },
+                { label: '5-10B', min: 5, max: 10 },
+                { label: '10-20B', min: 10, max: 20 },
+                { label: '20-50B', min: 20, max: 50 },
+                { label: '50-100B', min: 50, max: 100 },
+                { label: '100B+', min: 100, max: Infinity }
+            ];
+
+            const data = buckets.map(b => ({
+                label: b.label,
+                count: DATA.filter(d => d.Valuation >= b.min && d.Valuation < b.max).length
+            }));
+
+            const svg = d3.select('#valuation-histogram-container')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const x = d3.scaleBand()
+                .domain(data.map(d => d.label))
+                .range([margin.left, width - margin.right])
+                .padding(0.15);
+
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.count) * 1.1])
+                .range([height - margin.bottom, margin.top]);
+
+            // Bars
+            svg.selectAll('rect')
+                .data(data)
+                .join('rect')
+                .attr('x', d => x(d.label))
+                .attr('y', d => y(d.count))
+                .attr('width', x.bandwidth())
+                .attr('height', d => height - margin.bottom - y(d.count))
+                .attr('fill', (d, i) => i === 0 ? COLORS.lime : COLORS.cyan)
+                .attr('opacity', 0.85)
+                .attr('rx', 3)
+                .on('mouseover', function(event, d) {
+                    d3.select(this).attr('opacity', 1);
+                    const pct = ((d.count / DATA.length) * 100).toFixed(1);
+                    showTooltip(event, d.label, d.count + ' unicorns', pct + '% of total');
+                })
+                .on('mouseout', function() {
+                    d3.select(this).attr('opacity', 0.85);
+                    hideTooltip();
+                });
+
+            // X axis
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(0, ${height - margin.bottom})`)
+                .call(d3.axisBottom(x).tickSize(0));
+
+            // Y axis
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(${margin.left}, 0)`)
+                .call(d3.axisLeft(y).ticks(5));
+
+            // Value labels
+            svg.selectAll('.value-label')
+                .data(data)
+                .join('text')
+                .attr('class', 'value-label')
+                .attr('x', d => x(d.label) + x.bandwidth() / 2)
+                .attr('y', d => y(d.count) - 5)
+                .attr('text-anchor', 'middle')
+                .attr('fill', COLORS.textTertiary)
+                .attr('font-size', '10px')
+                .text(d => d.count);
+
+            // X axis label
+            svg.append('text')
+                .attr('x', width / 2)
+                .attr('y', height - 10)
+                .attr('text-anchor', 'middle')
+                .attr('fill', COLORS.textTertiary)
+                .attr('font-size', '11px')
+                .text('Valuation Range');
+        }
+
+        // 7b: Value Concentration (pie)
+        function renderValuationPie() {
+            const container = document.getElementById('valuation-pie-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight || 280;
+            const radius = Math.min(width, height) / 2 - 40;
+
+            // Create buckets with valuation sums
+            const buckets = [
+                { label: '1-2B', min: 1, max: 2 },
+                { label: '2-5B', min: 2, max: 5 },
+                { label: '5-10B', min: 5, max: 10 },
+                { label: '10-50B', min: 10, max: 50 },
+                { label: '50B+', min: 50, max: Infinity }
+            ];
+
+            const data = buckets.map(b => ({
+                label: b.label,
+                value: d3.sum(DATA.filter(d => d.Valuation >= b.min && d.Valuation < b.max), d => d.Valuation)
+            }));
+
+            const totalVal = d3.sum(data, d => d.value);
+            const colors = [COLORS.textTertiary, COLORS.cyan, COLORS.amber, COLORS.emerald, COLORS.lime];
+
+            const svg = d3.select('#valuation-pie-container')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height)
+                .append('g')
+                .attr('transform', `translate(${width/2 - 30}, ${height/2})`);
+
+            const pie = d3.pie()
+                .value(d => d.value)
+                .sort(null);
+
+            const arc = d3.arc()
+                .innerRadius(0)
+                .outerRadius(radius);
+
+            const arcs = svg.selectAll('arc')
+                .data(pie(data))
+                .join('g');
+
+            arcs.append('path')
+                .attr('d', arc)
+                .attr('fill', (d, i) => colors[i])
+                .attr('opacity', 0.85)
+                .attr('stroke', '#1A1A18')
+                .attr('stroke-width', 2)
+                .on('mouseover', function(event, d) {
+                    d3.select(this).attr('opacity', 1);
+                    const pct = ((d.data.value / totalVal) * 100).toFixed(1);
+                    showTooltip(event, d.data.label, '$' + d.data.value.toFixed(1) + 'B', pct + '% of total value');
+                })
+                .on('mouseout', function() {
+                    d3.select(this).attr('opacity', 0.85);
+                    hideTooltip();
+                });
+
+            // Legend
+            const legend = svg.selectAll('.legend')
+                .data(data)
+                .join('g')
+                .attr('class', 'legend')
+                .attr('transform', (d, i) => `translate(${radius + 15}, ${-50 + i * 22})`);
+
+            legend.append('rect')
+                .attr('width', 12)
+                .attr('height', 12)
+                .attr('fill', (d, i) => colors[i])
+                .attr('rx', 2);
+
+            legend.append('text')
+                .attr('x', 18)
+                .attr('y', 10)
+                .attr('fill', COLORS.textTertiary)
+                .attr('font-size', '10px')
+                .text(d => d.label + ' (' + ((d.value / totalVal) * 100).toFixed(0) + '%)');
+        }
+
+        // 7c: Valuation Range by Industry (min/median/max)
+        function renderValuationRange() {
+            const container = document.getElementById('valuation-range-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight || 280;
+            const margin = { top: 20, right: 30, bottom: 80, left: 50 };
+
+            const industries = ['Enterprise Tech', 'Financial Services', 'Consumer & Retail', 'Industrials', 'Healthcare & Life Sciences', 'Media & Entertainment'];
+
+            const data = industries.map(ind => {
+                const vals = DATA.filter(d => d.Industry === ind).map(d => d.Valuation).sort((a, b) => a - b);
+                return {
+                    industry: ind,
+                    min: d3.min(vals),
+                    median: d3.median(vals),
+                    max: d3.max(vals),
+                    q1: d3.quantile(vals, 0.25),
+                    q3: d3.quantile(vals, 0.75)
+                };
+            });
+
+            const svg = d3.select('#valuation-range-container')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const x = d3.scaleBand()
+                .domain(data.map(d => d.industry))
+                .range([margin.left, width - margin.right])
+                .padding(0.3);
+
+            const y = d3.scaleLog()
+                .domain([0.8, d3.max(data, d => d.max) * 1.2])
+                .range([height - margin.bottom, margin.top]);
+
+            // Range lines (min to max)
+            svg.selectAll('.range-line')
+                .data(data)
+                .join('line')
+                .attr('class', 'range-line')
+                .attr('x1', d => x(d.industry) + x.bandwidth() / 2)
+                .attr('x2', d => x(d.industry) + x.bandwidth() / 2)
+                .attr('y1', d => y(d.min))
+                .attr('y2', d => y(d.max))
+                .attr('stroke', COLORS.textTertiary)
+                .attr('stroke-width', 2);
+
+            // Boxes (Q1 to Q3)
+            svg.selectAll('.box')
+                .data(data)
+                .join('rect')
+                .attr('class', 'box')
+                .attr('x', d => x(d.industry) + x.bandwidth() * 0.2)
+                .attr('y', d => y(d.q3))
+                .attr('width', x.bandwidth() * 0.6)
+                .attr('height', d => y(d.q1) - y(d.q3))
+                .attr('fill', d => INDUSTRY_COLORS[d.industry])
+                .attr('opacity', 0.7)
+                .attr('rx', 2);
+
+            // Median lines
+            svg.selectAll('.median-line')
+                .data(data)
+                .join('line')
+                .attr('class', 'median-line')
+                .attr('x1', d => x(d.industry) + x.bandwidth() * 0.15)
+                .attr('x2', d => x(d.industry) + x.bandwidth() * 0.85)
+                .attr('y1', d => y(d.median))
+                .attr('y2', d => y(d.median))
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2);
+
+            // Tooltips on boxes
+            svg.selectAll('.box')
+                .on('mouseover', function(event, d) {
+                    showTooltip(event, d.industry,
+                        'Median: $' + d.median.toFixed(2) + 'B',
+                        'Range: $' + d.min.toFixed(1) + 'B - $' + d.max.toFixed(0) + 'B');
+                })
+                .on('mouseout', hideTooltip);
+
+            // X axis
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(0, ${height - margin.bottom})`)
+                .call(d3.axisBottom(x).tickSize(0))
+                .selectAll('text')
+                .attr('transform', 'rotate(-45)')
+                .attr('text-anchor', 'end')
+                .attr('dx', '-0.5em')
+                .style('font-size', '8px');
+
+            // Y axis
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(${margin.left}, 0)`)
+                .call(d3.axisLeft(y).ticks(5).tickFormat(d => '$' + d + 'B'));
+        }
+
+        // 7d: Age vs Valuation (scatter)
+        function renderAgeValuation() {
+            const container = document.getElementById('age-valuation-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight || 280;
+            const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+
+            // Calculate age (years since becoming unicorn)
+            const now = new Date();
+            const data = DATA.filter(d => d.Year >= 2015).map(d => ({
+                company: d.Company,
+                age: (now.getFullYear() - d.Year),
+                valuation: d.Valuation,
+                industry: d.Industry
+            }));
+
+            const svg = d3.select('#age-valuation-container')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const x = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.age) + 1])
+                .range([margin.left, width - margin.right]);
+
+            const y = d3.scaleLog()
+                .domain([0.9, d3.max(data, d => d.valuation) * 1.2])
+                .range([height - margin.bottom, margin.top]);
+
+            // X axis
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(0, ${height - margin.bottom})`)
+                .call(d3.axisBottom(x).ticks(6).tickFormat(d => d + ' yrs'));
+
+            // Y axis
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(${margin.left}, 0)`)
+                .call(d3.axisLeft(y).ticks(5).tickFormat(d => '$' + d + 'B'));
+
+            // Axis labels
+            svg.append('text')
+                .attr('x', width / 2)
+                .attr('y', height - 5)
+                .attr('text-anchor', 'middle')
+                .attr('fill', COLORS.textTertiary)
+                .attr('font-size', '11px')
+                .text('Years Since Unicorn Status');
+
+            // Points
+            svg.selectAll('circle')
+                .data(data)
+                .join('circle')
+                .attr('cx', d => x(d.age))
+                .attr('cy', d => y(d.valuation))
+                .attr('r', 3)
+                .attr('fill', d => INDUSTRY_COLORS[d.industry] || COLORS.textTertiary)
+                .attr('opacity', 0.6)
+                .on('mouseover', function(event, d) {
+                    d3.select(this).attr('opacity', 1).attr('r', 5);
+                    showTooltip(event, d.company, '$' + d.valuation.toFixed(1) + 'B', d.age + ' years • ' + d.industry);
+                })
+                .on('mouseout', function() {
+                    d3.select(this).attr('opacity', 0.6).attr('r', 3);
+                    hideTooltip();
+                });
+
+            // Highlight outliers
+            const outliers = data.filter(d => d.valuation >= 50);
+            svg.selectAll('.outlier-label')
+                .data(outliers.slice(0, 5))
+                .join('text')
+                .attr('class', 'outlier-label')
+                .attr('x', d => x(d.age) + 5)
+                .attr('y', d => y(d.valuation) - 5)
+                .attr('fill', COLORS.textSecondary)
+                .attr('font-size', '8px')
+                .text(d => d.company.length > 10 ? d.company.slice(0, 8) + '...' : d.company);
         }
 
         // Initialize on load
