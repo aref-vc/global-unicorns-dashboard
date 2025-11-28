@@ -1456,8 +1456,10 @@
             const filtered = getFilteredData();
             const industryData = d3.rollup(filtered, v => d3.mean(v, d => d.Valuation), d => d.Industry);
             const data = Array.from(industryData, ([industry, avg]) => ({ industry, avg }))
-                .filter(d => d.industry !== 'Other')
+                .filter(d => d.industry !== 'Other' && d.avg !== undefined && d.avg > 0)
                 .sort((a, b) => b.avg - a.avg);
+
+            if (data.length === 0) return; // No data to display
 
             const svg = d3.select('#industry-avg-container')
                 .append('svg')
