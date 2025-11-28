@@ -1183,22 +1183,24 @@
                 .attr('font-size', '12px')
                 .text('UNICORNS');
 
-            // Legend
+            // Legend - centered at bottom
+            const legendData = data.slice(0, 6);
+            const legendSpacing = 90;
+            const legendStartX = -(legendData.length * legendSpacing) / 2 + legendSpacing / 2;
+
             const legend = svg.selectAll('.legend')
-                .data(data.slice(0, 6))
+                .data(legendData)
                 .join('g')
                 .attr('class', 'legend')
-                .attr('transform', (d, i) => `translate(${radius + 20}, ${-60 + i * 22})`);
+                .attr('transform', (d, i) => `translate(${legendStartX + i * legendSpacing}, ${radius + 30})`);
 
-            legend.append('rect')
-                .attr('width', 12)
-                .attr('height', 12)
-                .attr('fill', d => REGION_COLORS[d.region] || '#666')
-                .attr('rx', 2);
+            legend.append('circle')
+                .attr('r', 5)
+                .attr('fill', d => REGION_COLORS[d.region] || '#666');
 
             legend.append('text')
-                .attr('x', 18)
-                .attr('y', 10)
+                .attr('x', 10)
+                .attr('y', 4)
                 .attr('fill', COLORS.textTertiary)
                 .attr('font-size', '10px')
                 .text(d => d.region);
@@ -1601,25 +1603,27 @@
                 .attr('transform', `translate(${margin.left}, 0)`)
                 .call(d3.axisLeft(y).ticks(5));
 
-            // Legend
+            // Legend - centered at bottom
+            const legendData = industries.slice(0, 5);
+            const legendSpacing = 120;
+            const legendStartX = (width - legendData.length * legendSpacing) / 2 + legendSpacing / 2;
+
             const legend = svg.selectAll('.legend')
-                .data(industries.slice(0, 5))
+                .data(legendData)
                 .join('g')
                 .attr('class', 'legend')
-                .attr('transform', (d, i) => `translate(${width - margin.right + 10}, ${margin.top + i * 18})`);
+                .attr('transform', (d, i) => `translate(${legendStartX + i * legendSpacing}, ${height - 10})`);
 
-            legend.append('rect')
-                .attr('width', 10)
-                .attr('height', 10)
-                .attr('fill', d => INDUSTRY_COLORS[d])
-                .attr('rx', 2);
+            legend.append('circle')
+                .attr('r', 5)
+                .attr('fill', d => INDUSTRY_COLORS[d]);
 
             legend.append('text')
-                .attr('x', 14)
-                .attr('y', 9)
+                .attr('x', 10)
+                .attr('y', 4)
                 .attr('fill', COLORS.textTertiary)
                 .attr('font-size', '8px')
-                .text(d => d.length > 15 ? d.slice(0, 12) + '...' : d);
+                .text(d => d.length > 12 ? d.slice(0, 10) + '...' : d);
         }
 
         // Section 4: Temporal Analysis
@@ -1794,25 +1798,26 @@
                 .attr('transform', `translate(${margin.left}, 0)`)
                 .call(d3.axisLeft(y).ticks(5));
 
-            // Legend
+            // Legend - centered at bottom
+            const legendSpacing = 120;
+            const legendStartX = (width - industries.length * legendSpacing) / 2 + legendSpacing / 2;
+
             const legend = svg.selectAll('.legend')
                 .data(industries)
                 .join('g')
                 .attr('class', 'legend')
-                .attr('transform', (d, i) => `translate(${width - margin.right + 8}, ${margin.top + i * 16})`);
+                .attr('transform', (d, i) => `translate(${legendStartX + i * legendSpacing}, ${height - 10})`);
 
-            legend.append('rect')
-                .attr('width', 10)
-                .attr('height', 10)
-                .attr('fill', d => INDUSTRY_COLORS[d])
-                .attr('rx', 2);
+            legend.append('circle')
+                .attr('r', 5)
+                .attr('fill', d => INDUSTRY_COLORS[d]);
 
             legend.append('text')
-                .attr('x', 14)
-                .attr('y', 9)
+                .attr('x', 10)
+                .attr('y', 4)
                 .attr('fill', COLORS.textTertiary)
                 .attr('font-size', '8px')
-                .text(d => d.length > 12 ? d.slice(0, 10) + '...' : d);
+                .text(d => d.length > 10 ? d.slice(0, 8) + '...' : d);
         }
 
         // 4c: Valuation Added by Year (bar chart)
@@ -1977,11 +1982,12 @@
                 .selectAll('text')
                 .attr('fill', COLORS.emerald);
 
-            // Legend
-            svg.append('circle').attr('cx', margin.left + 10).attr('cy', margin.top).attr('r', 5).attr('fill', COLORS.cyan);
-            svg.append('text').attr('x', margin.left + 20).attr('y', margin.top + 4).attr('fill', COLORS.textTertiary).attr('font-size', '10px').text('Count');
-            svg.append('circle').attr('cx', margin.left + 70).attr('cy', margin.top).attr('r', 5).attr('fill', COLORS.emerald);
-            svg.append('text').attr('x', margin.left + 80).attr('y', margin.top + 4).attr('fill', COLORS.textTertiary).attr('font-size', '10px').text('Valuation');
+            // Legend - centered at bottom
+            const legendX = width / 2 - 80;
+            svg.append('circle').attr('cx', legendX).attr('cy', height - 15).attr('r', 5).attr('fill', COLORS.cyan);
+            svg.append('text').attr('x', legendX + 10).attr('y', height - 11).attr('fill', COLORS.textTertiary).attr('font-size', '10px').text('Count');
+            svg.append('circle').attr('cx', legendX + 80).attr('cy', height - 15).attr('r', 5).attr('fill', COLORS.emerald);
+            svg.append('text').attr('x', legendX + 90).attr('y', height - 11).attr('fill', COLORS.textTertiary).attr('font-size', '10px').text('Valuation');
         }
 
         // Section 5: City & Hub Analysis
@@ -2209,11 +2215,12 @@
                 .attr('transform', `translate(${margin.left}, 0)`)
                 .call(d3.axisLeft(y).ticks(5));
 
-            // Legend
-            svg.append('rect').attr('x', width - 80).attr('y', margin.top).attr('width', 12).attr('height', 12).attr('fill', COLORS.cyan).attr('rx', 2);
-            svg.append('text').attr('x', width - 64).attr('y', margin.top + 10).attr('fill', COLORS.textTertiary).attr('font-size', '10px').text('US');
-            svg.append('rect').attr('x', width - 80).attr('y', margin.top + 18).attr('width', 12).attr('height', 12).attr('fill', COLORS.amber).attr('rx', 2);
-            svg.append('text').attr('x', width - 64).attr('y', margin.top + 28).attr('fill', COLORS.textTertiary).attr('font-size', '10px').text('China');
+            // Legend - centered at bottom
+            const legendX = width / 2 - 60;
+            svg.append('circle').attr('cx', legendX).attr('cy', height - 15).attr('r', 5).attr('fill', COLORS.cyan);
+            svg.append('text').attr('x', legendX + 10).attr('y', height - 11).attr('fill', COLORS.textTertiary).attr('font-size', '10px').text('US');
+            svg.append('circle').attr('cx', legendX + 60).attr('cy', height - 15).attr('r', 5).attr('fill', COLORS.amber);
+            svg.append('text').attr('x', legendX + 70).attr('y', height - 11).attr('fill', COLORS.textTertiary).attr('font-size', '10px').text('China');
         }
 
         // 5d: City Bubble Chart (count vs avg valuation)
@@ -2472,22 +2479,23 @@
                     hideTooltip();
                 });
 
-            // Legend
+            // Legend - centered at bottom
+            const legendSpacing = 100;
+            const legendStartX = -(data.length * legendSpacing) / 2 + legendSpacing / 2;
+
             const legend = svg.selectAll('.legend')
                 .data(data)
                 .join('g')
                 .attr('class', 'legend')
-                .attr('transform', (d, i) => `translate(${radius + 20}, ${-30 + i * 25})`);
+                .attr('transform', (d, i) => `translate(${legendStartX + i * legendSpacing}, ${radius + 30})`);
 
-            legend.append('rect')
-                .attr('width', 14)
-                .attr('height', 14)
-                .attr('fill', (d, i) => colors[i])
-                .attr('rx', 3);
+            legend.append('circle')
+                .attr('r', 5)
+                .attr('fill', (d, i) => colors[i]);
 
             legend.append('text')
-                .attr('x', 20)
-                .attr('y', 11)
+                .attr('x', 10)
+                .attr('y', 4)
                 .attr('fill', COLORS.textSecondary)
                 .attr('font-size', '11px')
                 .text(d => d.type);
@@ -2808,25 +2816,26 @@
                     hideTooltip();
                 });
 
-            // Legend
+            // Legend - centered at bottom
+            const legendSpacing = 80;
+            const legendStartX = -(data.length * legendSpacing) / 2 + legendSpacing / 2;
+
             const legend = svg.selectAll('.legend')
                 .data(data)
                 .join('g')
                 .attr('class', 'legend')
-                .attr('transform', (d, i) => `translate(${radius + 15}, ${-50 + i * 22})`);
+                .attr('transform', (d, i) => `translate(${legendStartX + i * legendSpacing}, ${radius + 30})`);
 
-            legend.append('rect')
-                .attr('width', 12)
-                .attr('height', 12)
-                .attr('fill', (d, i) => colors[i])
-                .attr('rx', 2);
+            legend.append('circle')
+                .attr('r', 5)
+                .attr('fill', (d, i) => colors[i]);
 
             legend.append('text')
-                .attr('x', 18)
-                .attr('y', 10)
+                .attr('x', 10)
+                .attr('y', 4)
                 .attr('fill', COLORS.textTertiary)
-                .attr('font-size', '10px')
-                .text(d => d.label + ' (' + ((d.value / totalVal) * 100).toFixed(0) + '%)');
+                .attr('font-size', '9px')
+                .text(d => d.label);
         }
 
         // 7c: Valuation Range by Industry (min/median/max)
