@@ -599,8 +599,8 @@
             </div>
             <div class="grid-2x2">
                 <div class="chart-card">
-                    <h3 class="chart-title">Valuation Buckets</h3>
-                    <p class="chart-subtitle">Distribution of unicorns by value range</p>
+                    <h3 class="chart-title">Valuation Beeswarm</h3>
+                    <p class="chart-subtitle">Each dot is a unicorn, colored by industry</p>
                     <div class="chart-container" id="valuation-histogram-container"></div>
                 </div>
                 <div class="chart-card">
@@ -2775,88 +2775,97 @@
 
         // Section 7: Valuation Distribution
 
-        // 7a: Valuation Buckets (histogram)
+        // 7a: Valuation Beeswarm Plot
         function renderValuationHistogram() {
             const container = document.getElementById('valuation-histogram-container');
             const width = container.clientWidth;
             const height = container.clientHeight || 350;
-            const margin = { top: 20, right: 30, bottom: 50, left: 50 };
+            const margin = { top: 20, right: 20, bottom: 60, left: 50 };
 
-            // Create buckets
             const filtered = getFilteredData();
-            const buckets = [
-                { label: '1-2B', min: 1, max: 2 },
-                { label: '2-5B', min: 2, max: 5 },
-                { label: '5-10B', min: 5, max: 10 },
-                { label: '10-20B', min: 10, max: 20 },
-                { label: '20-50B', min: 20, max: 50 },
-                { label: '50-100B', min: 50, max: 100 },
-                { label: '100B+', min: 100, max: Infinity }
-            ];
 
-            const data = buckets.map(b => ({
-                label: b.label,
-                count: filtered.filter(d => d.Valuation >= b.min && d.Valuation < b.max).length
+            // Sample data for performance (max 300 points for beeswarm)
+            let data = filtered.map(d => ({
+                company: d.Company,
+                valuation: d.Valuation,
+                industry: d.Industry,
+                country: d.Country
             }));
+
+            // Sort by valuation and sample if too many
+            data = data.sort((a, b) => a.valuation - b.valuation);
+            if (data.length > 300) {
+                // Keep every nth item, plus always keep top 20
+                const step = Math.ceil(data.length / 280);
+                const sampled = data.filter((d, i) => i % step === 0);
+                const top20 = data.slice(-20);
+                data = [...new Set([...sampled, ...top20])];
+            }
+
+            if (data.length === 0) return;
 
             const svg = d3.select('#valuation-histogram-container')
                 .append('svg')
                 .attr('width', width)
                 .attr('height', height);
 
-            const x = d3.scaleBand()
-                .domain(data.map(d => d.label))
-                .range([margin.left, width - margin.right])
-                .padding(0.15);
+            // Use log scale for x-axis given the wide range of valuations
+            const x = d3.scaleLog()
+                .domain([0.9, d3.max(data, d => d.valuation) * 1.2])
+                .range([margin.left, width - margin.right]);
 
-            const y = d3.scaleLinear()
-                .domain([0, d3.max(data, d => d.count) * 1.1])
-                .range([height - margin.bottom, margin.top]);
+            const radius = Math.max(2, Math.min(5, 150 / Math.sqrt(data.length)));
 
-            // Bars
-            svg.selectAll('rect')
+            // Beeswarm simulation - dodge points vertically to avoid overlap
+            const simulation = d3.forceSimulation(data)
+                .force('x', d3.forceX(d => x(d.valuation)).strength(1))
+                .force('y', d3.forceY(height / 2).strength(0.05))
+                .force('collide', d3.forceCollide(radius + 1))
+                .stop();
+
+            // Run simulation
+            for (let i = 0; i < 120; i++) simulation.tick();
+
+            // Constrain y positions
+            data.forEach(d => {
+                d.y = Math.max(margin.top + radius, Math.min(height - margin.bottom - radius, d.y));
+            });
+
+            // Draw dots
+            svg.selectAll('.bee')
                 .data(data)
-                .join('rect')
-                .attr('x', d => x(d.label))
-                .attr('y', d => y(d.count))
-                .attr('width', x.bandwidth())
-                .attr('height', d => height - margin.bottom - y(d.count))
-                .attr('fill', (d, i) => i === 0 ? COLORS.lime : COLORS.cyan)
-                .attr('opacity', 0.85)
-                .attr('rx', 3)
+                .join('circle')
+                .attr('class', 'bee')
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y)
+                .attr('r', radius)
+                .attr('fill', d => INDUSTRY_COLORS[d.industry] || COLORS.textTertiary)
+                .attr('opacity', 0.75)
                 .on('mouseover', function(event, d) {
-                    d3.select(this).attr('opacity', 1);
-                    const pct = filtered.length > 0 ? ((d.count / filtered.length) * 100).toFixed(1) : '0';
-                    showTooltip(event, d.label, d.count + ' unicorns', pct + '% of total');
+                    d3.select(this)
+                        .attr('opacity', 1)
+                        .attr('stroke', COLORS.lime)
+                        .attr('stroke-width', 2)
+                        .attr('r', radius * 1.5);
+                    showTooltip(event, d.company, '$' + d.valuation.toFixed(1) + 'B', d.industry, d.country);
                 })
                 .on('mouseout', function() {
-                    d3.select(this).attr('opacity', 0.85);
+                    d3.select(this)
+                        .attr('opacity', 0.75)
+                        .attr('stroke', 'none')
+                        .attr('r', radius);
                     hideTooltip();
                 });
 
-            // X axis
+            // X axis (log scale)
+            const xAxis = d3.axisBottom(x)
+                .tickValues([1, 2, 5, 10, 20, 50, 100, 200, 500])
+                .tickFormat(d => d >= 100 ? d + 'B' : d + 'B');
+
             svg.append('g')
                 .attr('class', 'axis')
                 .attr('transform', `translate(0, ${height - margin.bottom})`)
-                .call(d3.axisBottom(x).tickSize(0));
-
-            // Y axis
-            svg.append('g')
-                .attr('class', 'axis')
-                .attr('transform', `translate(${margin.left}, 0)`)
-                .call(d3.axisLeft(y).ticks(5));
-
-            // Value labels
-            svg.selectAll('.value-label')
-                .data(data)
-                .join('text')
-                .attr('class', 'value-label')
-                .attr('x', d => x(d.label) + x.bandwidth() / 2)
-                .attr('y', d => y(d.count) - 5)
-                .attr('text-anchor', 'middle')
-                .attr('fill', COLORS.textTertiary)
-                .attr('font-size', '10px')
-                .text(d => d.count);
+                .call(xAxis);
 
             // X axis label
             svg.append('text')
@@ -2865,7 +2874,31 @@
                 .attr('text-anchor', 'middle')
                 .attr('fill', COLORS.textTertiary)
                 .attr('font-size', '11px')
-                .text('Valuation Range');
+                .text('Valuation (log scale)');
+
+            // Legend at bottom
+            const industries = ['Enterprise Tech', 'Financial Services', 'Consumer & Retail', 'Healthcare & Life Sciences'];
+            const legendWidth = width - margin.left - margin.right;
+            const legendSpacing = legendWidth / industries.length;
+
+            const legend = svg.append('g')
+                .attr('transform', `translate(${margin.left}, ${height - 35})`);
+
+            industries.forEach((ind, i) => {
+                const legendItem = legend.append('g')
+                    .attr('transform', `translate(${i * legendSpacing}, 0)`);
+
+                legendItem.append('circle')
+                    .attr('r', 4)
+                    .attr('fill', INDUSTRY_COLORS[ind] || COLORS.textTertiary);
+
+                legendItem.append('text')
+                    .attr('x', 8)
+                    .attr('y', 4)
+                    .attr('fill', COLORS.textTertiary)
+                    .attr('font-size', '8px')
+                    .text(ind.split(' ')[0]);
+            });
         }
 
         // 7b: Value Concentration (pie)
