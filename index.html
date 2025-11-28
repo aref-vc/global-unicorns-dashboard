@@ -619,6 +619,10 @@
                 // Render all sections
                 renderKPIs();
                 renderTreemap();
+                renderCountryCount();
+                renderCountryValuation();
+                renderRegionDoughnut();
+                renderCountryScatter();
 
                 console.log('Dashboard initialized with', DATA.length, 'unicorns');
             } catch (error) {
@@ -701,6 +705,329 @@
                 .attr('font-size', '10px')
                 .attr('opacity', 0.8)
                 .text(d => '$' + d.data.Valuation + 'B');
+        }
+
+        // Section 2: Geographic Analysis
+
+        // 2a: Countries by count (horizontal bar)
+        function renderCountryCount() {
+            const container = document.getElementById('country-count-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight || 280;
+            const margin = { top: 10, right: 40, bottom: 30, left: 100 };
+
+            // Aggregate data
+            const countryData = d3.rollup(DATA, v => v.length, d => d.Country);
+            const data = Array.from(countryData, ([country, count]) => ({ country, count }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 15);
+
+            const svg = d3.select('#country-count-container')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const x = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.count)])
+                .range([margin.left, width - margin.right]);
+
+            const y = d3.scaleBand()
+                .domain(data.map(d => d.country))
+                .range([margin.top, height - margin.bottom])
+                .padding(0.2);
+
+            // Bars
+            svg.selectAll('rect')
+                .data(data)
+                .join('rect')
+                .attr('x', margin.left)
+                .attr('y', d => y(d.country))
+                .attr('width', d => x(d.count) - margin.left)
+                .attr('height', y.bandwidth())
+                .attr('fill', COLORS.cyan)
+                .attr('opacity', 0.85)
+                .attr('rx', 3)
+                .on('mouseover', function(event, d) {
+                    d3.select(this).attr('opacity', 1);
+                    const pct = ((d.count / DATA.length) * 100).toFixed(1);
+                    showTooltip(event, d.country, d.count + ' unicorns', pct + '% of total');
+                })
+                .on('mouseout', function() {
+                    d3.select(this).attr('opacity', 0.85);
+                    hideTooltip();
+                });
+
+            // Y axis
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(${margin.left}, 0)`)
+                .call(d3.axisLeft(y).tickSize(0))
+                .select('.domain').remove();
+
+            // Value labels
+            svg.selectAll('.value-label')
+                .data(data)
+                .join('text')
+                .attr('class', 'value-label')
+                .attr('x', d => x(d.count) + 5)
+                .attr('y', d => y(d.country) + y.bandwidth() / 2 + 4)
+                .attr('fill', COLORS.textTertiary)
+                .attr('font-size', '10px')
+                .text(d => d.count);
+        }
+
+        // 2b: Countries by valuation (horizontal bar)
+        function renderCountryValuation() {
+            const container = document.getElementById('country-valuation-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight || 280;
+            const margin = { top: 10, right: 50, bottom: 30, left: 100 };
+
+            // Aggregate data
+            const countryData = d3.rollup(DATA, v => d3.sum(v, d => d.Valuation), d => d.Country);
+            const data = Array.from(countryData, ([country, valuation]) => ({ country, valuation }))
+                .sort((a, b) => b.valuation - a.valuation)
+                .slice(0, 15);
+
+            const svg = d3.select('#country-valuation-container')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const x = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.valuation)])
+                .range([margin.left, width - margin.right]);
+
+            const y = d3.scaleBand()
+                .domain(data.map(d => d.country))
+                .range([margin.top, height - margin.bottom])
+                .padding(0.2);
+
+            // Bars
+            svg.selectAll('rect')
+                .data(data)
+                .join('rect')
+                .attr('x', margin.left)
+                .attr('y', d => y(d.country))
+                .attr('width', d => x(d.valuation) - margin.left)
+                .attr('height', y.bandwidth())
+                .attr('fill', COLORS.amber)
+                .attr('opacity', 0.85)
+                .attr('rx', 3)
+                .on('mouseover', function(event, d) {
+                    d3.select(this).attr('opacity', 1);
+                    const totalVal = d3.sum(DATA, x => x.Valuation);
+                    const pct = ((d.valuation / totalVal) * 100).toFixed(1);
+                    showTooltip(event, d.country, '$' + d.valuation.toFixed(1) + 'B', pct + '% of total valuation');
+                })
+                .on('mouseout', function() {
+                    d3.select(this).attr('opacity', 0.85);
+                    hideTooltip();
+                });
+
+            // Y axis
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(${margin.left}, 0)`)
+                .call(d3.axisLeft(y).tickSize(0))
+                .select('.domain').remove();
+
+            // Value labels
+            svg.selectAll('.value-label')
+                .data(data)
+                .join('text')
+                .attr('class', 'value-label')
+                .attr('x', d => x(d.valuation) + 5)
+                .attr('y', d => y(d.country) + y.bandwidth() / 2 + 4)
+                .attr('fill', COLORS.textTertiary)
+                .attr('font-size', '10px')
+                .text(d => '$' + (d.valuation >= 1000 ? (d.valuation/1000).toFixed(1) + 'T' : d.valuation.toFixed(0) + 'B'));
+        }
+
+        // 2c: Regional Distribution (doughnut)
+        function renderRegionDoughnut() {
+            const container = document.getElementById('region-doughnut-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight || 280;
+            const radius = Math.min(width, height) / 2 - 40;
+
+            // Aggregate data
+            const regionData = d3.rollup(DATA, v => v.length, d => d.Region);
+            const data = Array.from(regionData, ([region, count]) => ({ region, count }))
+                .sort((a, b) => b.count - a.count);
+
+            const svg = d3.select('#region-doughnut-container')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height)
+                .append('g')
+                .attr('transform', `translate(${width/2}, ${height/2})`);
+
+            const pie = d3.pie()
+                .value(d => d.count)
+                .sort(null);
+
+            const arc = d3.arc()
+                .innerRadius(radius * 0.5)
+                .outerRadius(radius);
+
+            const arcs = svg.selectAll('arc')
+                .data(pie(data))
+                .join('g');
+
+            arcs.append('path')
+                .attr('d', arc)
+                .attr('fill', d => REGION_COLORS[d.data.region] || '#666')
+                .attr('opacity', 0.85)
+                .attr('stroke', '#1A1A18')
+                .attr('stroke-width', 2)
+                .on('mouseover', function(event, d) {
+                    d3.select(this).attr('opacity', 1);
+                    const pct = ((d.data.count / DATA.length) * 100).toFixed(1);
+                    showTooltip(event, d.data.region, d.data.count + ' unicorns', pct + '% of total');
+                })
+                .on('mouseout', function() {
+                    d3.select(this).attr('opacity', 0.85);
+                    hideTooltip();
+                });
+
+            // Center label
+            svg.append('text')
+                .attr('text-anchor', 'middle')
+                .attr('dy', '-0.5em')
+                .attr('fill', COLORS.textPrimary)
+                .attr('font-size', '24px')
+                .attr('font-weight', '700')
+                .text(DATA.length);
+
+            svg.append('text')
+                .attr('text-anchor', 'middle')
+                .attr('dy', '1.2em')
+                .attr('fill', COLORS.textTertiary)
+                .attr('font-size', '12px')
+                .text('UNICORNS');
+
+            // Legend
+            const legend = svg.selectAll('.legend')
+                .data(data.slice(0, 6))
+                .join('g')
+                .attr('class', 'legend')
+                .attr('transform', (d, i) => `translate(${radius + 20}, ${-60 + i * 22})`);
+
+            legend.append('rect')
+                .attr('width', 12)
+                .attr('height', 12)
+                .attr('fill', d => REGION_COLORS[d.region] || '#666')
+                .attr('rx', 2);
+
+            legend.append('text')
+                .attr('x', 18)
+                .attr('y', 10)
+                .attr('fill', COLORS.textTertiary)
+                .attr('font-size', '10px')
+                .text(d => d.region);
+        }
+
+        // 2d: Country scatter (count vs valuation)
+        function renderCountryScatter() {
+            const container = document.getElementById('country-scatter-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight || 280;
+            const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+
+            // Aggregate data
+            const countryData = d3.rollup(DATA,
+                v => ({ count: v.length, valuation: d3.sum(v, d => d.Valuation), avg: d3.mean(v, d => d.Valuation) }),
+                d => d.Country
+            );
+            const data = Array.from(countryData, ([country, stats]) => ({
+                country,
+                count: stats.count,
+                valuation: stats.valuation,
+                avg: stats.avg,
+                region: getRegion(country)
+            })).filter(d => d.count >= 5); // Only show countries with 5+ unicorns
+
+            const svg = d3.select('#country-scatter-container')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const x = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.count) * 1.1])
+                .range([margin.left, width - margin.right]);
+
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.valuation) * 1.1])
+                .range([height - margin.bottom, margin.top]);
+
+            const r = d3.scaleSqrt()
+                .domain([0, d3.max(data, d => d.avg)])
+                .range([4, 25]);
+
+            // X axis
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(0, ${height - margin.bottom})`)
+                .call(d3.axisBottom(x).ticks(6));
+
+            // Y axis
+            svg.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(${margin.left}, 0)`)
+                .call(d3.axisLeft(y).ticks(6).tickFormat(d => d >= 1000 ? (d/1000) + 'T' : d + 'B'));
+
+            // Axis labels
+            svg.append('text')
+                .attr('x', width / 2)
+                .attr('y', height - 5)
+                .attr('text-anchor', 'middle')
+                .attr('fill', COLORS.textTertiary)
+                .attr('font-size', '11px')
+                .text('Number of Unicorns');
+
+            svg.append('text')
+                .attr('transform', 'rotate(-90)')
+                .attr('x', -height / 2)
+                .attr('y', 15)
+                .attr('text-anchor', 'middle')
+                .attr('fill', COLORS.textTertiary)
+                .attr('font-size', '11px')
+                .text('Total Valuation ($B)');
+
+            // Bubbles
+            svg.selectAll('circle')
+                .data(data)
+                .join('circle')
+                .attr('cx', d => x(d.count))
+                .attr('cy', d => y(d.valuation))
+                .attr('r', d => r(d.avg))
+                .attr('fill', d => REGION_COLORS[d.region] || '#666')
+                .attr('opacity', 0.7)
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 1)
+                .on('mouseover', function(event, d) {
+                    d3.select(this).attr('opacity', 1).attr('stroke-width', 2);
+                    showTooltip(event, d.country,
+                        d.count + ' unicorns • $' + d.valuation.toFixed(1) + 'B',
+                        'Avg: $' + d.avg.toFixed(2) + 'B • ' + d.region);
+                })
+                .on('mouseout', function() {
+                    d3.select(this).attr('opacity', 0.7).attr('stroke-width', 1);
+                    hideTooltip();
+                });
+
+            // Labels for top countries
+            svg.selectAll('.country-label')
+                .data(data.filter(d => d.count >= 20))
+                .join('text')
+                .attr('class', 'country-label')
+                .attr('x', d => x(d.count))
+                .attr('y', d => y(d.valuation) - r(d.avg) - 5)
+                .attr('text-anchor', 'middle')
+                .attr('fill', COLORS.textSecondary)
+                .attr('font-size', '9px')
+                .text(d => d.country === 'United States' ? 'US' : d.country === 'United Kingdom' ? 'UK' : d.country);
         }
 
         // Initialize on load
