@@ -486,7 +486,7 @@
                 <div class="chart-card" style="grid-column: span 2;">
                     <h3 class="chart-title">Industry Marimekko</h3>
                     <p class="chart-subtitle">Width = unicorn count, Height = valuation proportion</p>
-                    <div class="chart-container" id="industry-marimekko-container" style="min-height: 400px;"></div>
+                    <div class="chart-container" id="industry-marimekko-container" style="min-height: 520px;"></div>
                 </div>
                 <div class="chart-card">
                     <h3 class="chart-title">Average Valuation by Industry</h3>
@@ -1347,7 +1347,7 @@
         function renderIndustryMarimekko() {
             const container = document.getElementById('industry-marimekko-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 400;
+            const height = container.clientHeight || 520;
             const margin = { top: 20, right: 20, bottom: 70, left: 20 };
             const chartWidth = width - margin.left - margin.right;
             const chartHeight = height - margin.top - margin.bottom;
