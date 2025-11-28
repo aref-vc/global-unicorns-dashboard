@@ -136,7 +136,7 @@
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 24px;
-            min-height: 360px;
+            min-height: 450px;
             display: flex;
             flex-direction: column;
         }
@@ -163,7 +163,7 @@
         .chart-container {
             flex: 1;
             position: relative;
-            min-height: 280px;
+            min-height: 350px;
         }
 
         .chart-container svg {
@@ -919,7 +919,7 @@
         function renderTreemap() {
             const container = document.getElementById('treemap-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 300;
+            const height = container.clientHeight || 375;
 
             // Get top 20 by valuation
             const data = getFilteredData();
@@ -986,7 +986,7 @@
         function renderCountryCount() {
             const container = document.getElementById('country-count-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 10, right: 40, bottom: 30, left: 100 };
 
             // Aggregate data
@@ -1054,7 +1054,7 @@
         function renderCountryValuation() {
             const container = document.getElementById('country-valuation-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 10, right: 50, bottom: 30, left: 100 };
 
             // Aggregate data
@@ -1123,7 +1123,7 @@
         function renderRegionDoughnut() {
             const container = document.getElementById('region-doughnut-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const radius = Math.min(width, height) / 2 - 40;
 
             // Aggregate data
@@ -1208,7 +1208,7 @@
         function renderCountryScatter() {
             const container = document.getElementById('country-scatter-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 20, right: 30, bottom: 40, left: 50 };
 
             // Aggregate data
@@ -1313,7 +1313,7 @@
         function renderIndustryCount() {
             const container = document.getElementById('industry-count-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 10, right: 40, bottom: 30, left: 160 };
 
             // Aggregate data
@@ -1381,7 +1381,7 @@
         function renderIndustryValuation() {
             const container = document.getElementById('industry-valuation-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 10, right: 50, bottom: 30, left: 160 };
 
             // Aggregate data
@@ -1450,7 +1450,7 @@
         function renderIndustryAvg() {
             const container = document.getElementById('industry-avg-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 20, right: 20, bottom: 80, left: 50 };
 
             // Aggregate data
@@ -1531,7 +1531,7 @@
         function renderIndustryCountry() {
             const container = document.getElementById('industry-country-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 20, right: 100, bottom: 40, left: 50 };
 
             const filtered = getFilteredData();
@@ -1628,7 +1628,7 @@
         function renderYearCount() {
             const container = document.getElementById('year-count-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 20, right: 30, bottom: 40, left: 50 };
 
             // Aggregate data
@@ -1726,7 +1726,7 @@
         function renderIndustryTrend() {
             const container = document.getElementById('industry-trend-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 20, right: 100, bottom: 40, left: 50 };
 
             const filtered = getFilteredData();
@@ -1819,7 +1819,7 @@
         function renderYearValuation() {
             const container = document.getElementById('year-valuation-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 20, right: 30, bottom: 40, left: 60 };
 
             // Aggregate data
@@ -1882,7 +1882,7 @@
         function renderCumulative() {
             const container = document.getElementById('cumulative-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 20, right: 60, bottom: 40, left: 50 };
 
             // Aggregate data
@@ -1990,7 +1990,7 @@
         function renderCityCount() {
             const container = document.getElementById('city-count-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 10, right: 40, bottom: 30, left: 100 };
 
             // Aggregate data
@@ -2058,7 +2058,7 @@
         function renderCityValuation() {
             const container = document.getElementById('city-valuation-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 10, right: 50, bottom: 30, left: 100 };
 
             // Aggregate data
@@ -2125,7 +2125,7 @@
         function renderUSChinaCities() {
             const container = document.getElementById('us-china-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 20, right: 30, bottom: 60, left: 50 };
 
             // Get top 5 cities for each country
@@ -2220,7 +2220,7 @@
         function renderCityBubble() {
             const container = document.getElementById('city-bubble-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 20, right: 30, bottom: 40, left: 50 };
 
             // Aggregate data
@@ -2343,7 +2343,7 @@
         function renderInvestorCount() {
             const container = document.getElementById('investor-count-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 10, right: 40, bottom: 30, left: 140 };
 
             const investorMap = parseInvestors(DATA);
@@ -2412,7 +2412,7 @@
         function renderInvestorType() {
             const container = document.getElementById('investor-type-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const radius = Math.min(width, height) / 2 - 40;
 
             const investorMap = parseInvestors(DATA);
@@ -2497,7 +2497,7 @@
         function renderInvestorDiversification() {
             const container = document.getElementById('investor-radar-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 20, right: 20, bottom: 80, left: 40 };
 
             const investorMap = parseInvestors(DATA);
@@ -2583,7 +2583,7 @@
         function renderInvestorValue() {
             const container = document.getElementById('investor-value-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 10, right: 50, bottom: 30, left: 140 };
 
             const investorMap = parseInvestors(DATA);
@@ -2659,7 +2659,7 @@
         function renderValuationHistogram() {
             const container = document.getElementById('valuation-histogram-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 20, right: 30, bottom: 50, left: 50 };
 
             // Create buckets
@@ -2752,7 +2752,7 @@
         function renderValuationPie() {
             const container = document.getElementById('valuation-pie-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const radius = Math.min(width, height) / 2 - 40;
 
             // Create buckets with valuation sums
@@ -2833,7 +2833,7 @@
         function renderValuationRange() {
             const container = document.getElementById('valuation-range-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 20, right: 30, bottom: 80, left: 50 };
 
             const filtered = getFilteredData();
@@ -2933,7 +2933,7 @@
         function renderAgeValuation() {
             const container = document.getElementById('age-valuation-container');
             const width = container.clientWidth;
-            const height = container.clientHeight || 280;
+            const height = container.clientHeight || 350;
             const margin = { top: 20, right: 30, bottom: 40, left: 50 };
 
             // Calculate age (years since becoming unicorn)
