@@ -282,6 +282,94 @@
                 font-size: 28px;
             }
         }
+
+        /* Filter Controls */
+        .filters {
+            display: flex;
+            gap: 16px;
+            padding: 16px 48px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-label {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-select {
+            background: var(--bg-accent);
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-family: var(--font-family);
+            font-size: 13px;
+            cursor: pointer;
+            min-width: 160px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23B3B3A3' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            padding-right: 32px;
+        }
+
+        .filter-select:hover {
+            border-color: var(--lime);
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--lime);
+            box-shadow: 0 0 0 2px rgba(190, 255, 0, 0.2);
+        }
+
+        .filter-reset {
+            background: transparent;
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            padding: 8px 16px;
+            color: var(--text-secondary);
+            font-family: var(--font-family);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-left: auto;
+        }
+
+        .filter-reset:hover {
+            border-color: var(--coral);
+            color: var(--coral);
+        }
+
+        .filter-badge {
+            background: var(--lime);
+            color: var(--bg-main);
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .filters {
+                padding: 16px 24px;
+            }
+            .filter-select {
+                min-width: 140px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -289,6 +377,32 @@
         <h1>Global <span>Unicorn</span> Dashboard</h1>
         <p>CB Insights Global Unicorn Club — Private Companies Valued at $1B+ (as of October 7th, 2025)</p>
     </header>
+
+    <div class="filters" id="filter-bar">
+        <div class="filter-group">
+            <span class="filter-label">Country</span>
+            <select class="filter-select" id="filter-country">
+                <option value="all">All Countries</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <span class="filter-label">Industry</span>
+            <select class="filter-select" id="filter-industry">
+                <option value="all">All Industries</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <span class="filter-label">Year Range</span>
+            <select class="filter-select" id="filter-year-start">
+                <option value="all">From</option>
+            </select>
+            <span style="color: var(--text-tertiary);">—</span>
+            <select class="filter-select" id="filter-year-end" style="min-width: 100px;">
+                <option value="all">To</option>
+            </select>
+        </div>
+        <button class="filter-reset" id="filter-reset">Reset Filters</button>
+    </div>
 
     <main class="dashboard">
         <!-- Section 1: Executive Overview -->
@@ -604,6 +718,136 @@
             return REGION_MAP[country] || 'Other';
         }
 
+        // Filter state
+        let FILTERS = {
+            country: 'all',
+            industry: 'all',
+            yearStart: 'all',
+            yearEnd: 'all'
+        };
+
+        // Get filtered data based on current filters
+        function getFilteredData() {
+            return DATA.filter(d => {
+                if (FILTERS.country !== 'all' && d.Country !== FILTERS.country) return false;
+                if (FILTERS.industry !== 'all' && d.Industry !== FILTERS.industry) return false;
+                if (FILTERS.yearStart !== 'all' && d.Year < parseInt(FILTERS.yearStart)) return false;
+                if (FILTERS.yearEnd !== 'all' && d.Year > parseInt(FILTERS.yearEnd)) return false;
+                return true;
+            });
+        }
+
+        // Populate filter dropdowns
+        function populateFilters() {
+            // Country filter - top 15 by count
+            const countryCounts = d3.rollup(DATA, v => v.length, d => d.Country);
+            const topCountries = Array.from(countryCounts.entries())
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 15)
+                .map(d => d[0]);
+
+            const countrySelect = document.getElementById('filter-country');
+            topCountries.forEach(country => {
+                const opt = document.createElement('option');
+                opt.value = country;
+                opt.textContent = country + ' (' + countryCounts.get(country) + ')';
+                countrySelect.appendChild(opt);
+            });
+
+            // Industry filter
+            const industries = [...new Set(DATA.map(d => d.Industry))].sort();
+            const industrySelect = document.getElementById('filter-industry');
+            industries.forEach(industry => {
+                const opt = document.createElement('option');
+                opt.value = industry;
+                opt.textContent = industry;
+                industrySelect.appendChild(opt);
+            });
+
+            // Year filters
+            const years = [...new Set(DATA.map(d => d.Year))].sort((a, b) => a - b);
+            const yearStartSelect = document.getElementById('filter-year-start');
+            const yearEndSelect = document.getElementById('filter-year-end');
+
+            years.forEach(year => {
+                const opt1 = document.createElement('option');
+                opt1.value = year;
+                opt1.textContent = year;
+                yearStartSelect.appendChild(opt1);
+
+                const opt2 = document.createElement('option');
+                opt2.value = year;
+                opt2.textContent = year;
+                yearEndSelect.appendChild(opt2);
+            });
+        }
+
+        // Set up filter event listeners
+        function setupFilterListeners() {
+            document.getElementById('filter-country').addEventListener('change', (e) => {
+                FILTERS.country = e.target.value;
+                refreshDashboard();
+            });
+
+            document.getElementById('filter-industry').addEventListener('change', (e) => {
+                FILTERS.industry = e.target.value;
+                refreshDashboard();
+            });
+
+            document.getElementById('filter-year-start').addEventListener('change', (e) => {
+                FILTERS.yearStart = e.target.value;
+                refreshDashboard();
+            });
+
+            document.getElementById('filter-year-end').addEventListener('change', (e) => {
+                FILTERS.yearEnd = e.target.value;
+                refreshDashboard();
+            });
+
+            document.getElementById('filter-reset').addEventListener('click', () => {
+                FILTERS = { country: 'all', industry: 'all', yearStart: 'all', yearEnd: 'all' };
+                document.getElementById('filter-country').value = 'all';
+                document.getElementById('filter-industry').value = 'all';
+                document.getElementById('filter-year-start').value = 'all';
+                document.getElementById('filter-year-end').value = 'all';
+                refreshDashboard();
+            });
+        }
+
+        // Refresh all charts with filtered data
+        function refreshDashboard() {
+            // Clear existing charts
+            document.querySelectorAll('.chart-container').forEach(el => el.innerHTML = '');
+
+            // Re-render all charts
+            renderKPIs();
+            renderTreemap();
+            renderCountryCount();
+            renderCountryValuation();
+            renderRegionDoughnut();
+            renderCountryScatter();
+            renderIndustryCount();
+            renderIndustryValuation();
+            renderIndustryAvg();
+            renderIndustryCountry();
+            renderYearCount();
+            renderIndustryTrend();
+            renderYearValuation();
+            renderCumulative();
+            renderCityCount();
+            renderCityValuation();
+            renderUSChinaCities();
+            renderCityBubble();
+            renderInvestorCount();
+            renderInvestorType();
+            renderInvestorDiversification();
+            renderInvestorValue();
+            renderValuationHistogram();
+            renderValuationPie();
+            renderValuationRange();
+            renderAgeValuation();
+        }
+
         // Load data and initialize
         async function init() {
             try {
@@ -615,6 +859,10 @@
                     d.Year = new Date(d.DateJoined).getFullYear();
                     d.Region = getRegion(d.Country);
                 });
+
+                // Setup filters
+                populateFilters();
+                setupFilterListeners();
 
                 // Render all sections
                 renderKPIs();
@@ -652,10 +900,11 @@
 
         // Section 1: KPIs
         function renderKPIs() {
-            const totalCount = DATA.length;
-            const totalValuation = d3.sum(DATA, d => d.Valuation);
-            const avgValuation = totalValuation / totalCount;
-            const countryCount = new Set(DATA.map(d => d.Country)).size;
+            const data = getFilteredData();
+            const totalCount = data.length;
+            const totalValuation = d3.sum(data, d => d.Valuation);
+            const avgValuation = totalCount > 0 ? totalValuation / totalCount : 0;
+            const countryCount = new Set(data.map(d => d.Country)).size;
 
             document.getElementById('kpi-count').textContent = formatCount(totalCount);
             document.getElementById('kpi-valuation').textContent = '$' + formatNumber(totalValuation);
@@ -670,7 +919,8 @@
             const height = container.clientHeight || 300;
 
             // Get top 20 by valuation
-            const top20 = DATA.slice().sort((a, b) => b.Valuation - a.Valuation).slice(0, 20);
+            const data = getFilteredData();
+            const top20 = data.slice().sort((a, b) => b.Valuation - a.Valuation).slice(0, 20);
 
             const svg = d3.select('#treemap-container')
                 .append('svg')
@@ -737,7 +987,8 @@
             const margin = { top: 10, right: 40, bottom: 30, left: 100 };
 
             // Aggregate data
-            const countryData = d3.rollup(DATA, v => v.length, d => d.Country);
+            const filtered = getFilteredData();
+            const countryData = d3.rollup(filtered, v => v.length, d => d.Country);
             const data = Array.from(countryData, ([country, count]) => ({ country, count }))
                 .sort((a, b) => b.count - a.count)
                 .slice(0, 15);
@@ -769,7 +1020,7 @@
                 .attr('rx', 3)
                 .on('mouseover', function(event, d) {
                     d3.select(this).attr('opacity', 1);
-                    const pct = ((d.count / DATA.length) * 100).toFixed(1);
+                    const pct = ((d.count / filtered.length) * 100).toFixed(1);
                     showTooltip(event, d.country, d.count + ' unicorns', pct + '% of total');
                 })
                 .on('mouseout', function() {
@@ -804,7 +1055,8 @@
             const margin = { top: 10, right: 50, bottom: 30, left: 100 };
 
             // Aggregate data
-            const countryData = d3.rollup(DATA, v => d3.sum(v, d => d.Valuation), d => d.Country);
+            const filtered = getFilteredData();
+            const countryData = d3.rollup(filtered, v => d3.sum(v, d => d.Valuation), d => d.Country);
             const data = Array.from(countryData, ([country, valuation]) => ({ country, valuation }))
                 .sort((a, b) => b.valuation - a.valuation)
                 .slice(0, 15);
@@ -836,7 +1088,7 @@
                 .attr('rx', 3)
                 .on('mouseover', function(event, d) {
                     d3.select(this).attr('opacity', 1);
-                    const totalVal = d3.sum(DATA, x => x.Valuation);
+                    const totalVal = d3.sum(filtered, x => x.Valuation);
                     const pct = ((d.valuation / totalVal) * 100).toFixed(1);
                     showTooltip(event, d.country, '$' + d.valuation.toFixed(1) + 'B', pct + '% of total valuation');
                 })
@@ -872,7 +1124,8 @@
             const radius = Math.min(width, height) / 2 - 40;
 
             // Aggregate data
-            const regionData = d3.rollup(DATA, v => v.length, d => d.Region);
+            const filtered = getFilteredData();
+            const regionData = d3.rollup(filtered, v => v.length, d => d.Region);
             const data = Array.from(regionData, ([region, count]) => ({ region, count }))
                 .sort((a, b) => b.count - a.count);
 
@@ -903,7 +1156,7 @@
                 .attr('stroke-width', 2)
                 .on('mouseover', function(event, d) {
                     d3.select(this).attr('opacity', 1);
-                    const pct = ((d.data.count / DATA.length) * 100).toFixed(1);
+                    const pct = ((d.data.count / filtered.length) * 100).toFixed(1);
                     showTooltip(event, d.data.region, d.data.count + ' unicorns', pct + '% of total');
                 })
                 .on('mouseout', function() {
@@ -918,7 +1171,7 @@
                 .attr('fill', COLORS.textPrimary)
                 .attr('font-size', '24px')
                 .attr('font-weight', '700')
-                .text(DATA.length);
+                .text(filtered.length);
 
             svg.append('text')
                 .attr('text-anchor', 'middle')
@@ -956,7 +1209,8 @@
             const margin = { top: 20, right: 30, bottom: 40, left: 50 };
 
             // Aggregate data
-            const countryData = d3.rollup(DATA,
+            const filtered = getFilteredData();
+            const countryData = d3.rollup(filtered,
                 v => ({ count: v.length, valuation: d3.sum(v, d => d.Valuation), avg: d3.mean(v, d => d.Valuation) }),
                 d => d.Country
             );
@@ -966,7 +1220,7 @@
                 valuation: stats.valuation,
                 avg: stats.avg,
                 region: getRegion(country)
-            })).filter(d => d.count >= 5); // Only show countries with 5+ unicorns
+            })).filter(d => d.count >= 3); // Only show countries with 3+ unicorns
 
             const svg = d3.select('#country-scatter-container')
                 .append('svg')
@@ -1060,7 +1314,8 @@
             const margin = { top: 10, right: 40, bottom: 30, left: 160 };
 
             // Aggregate data
-            const industryData = d3.rollup(DATA, v => v.length, d => d.Industry);
+            const filtered = getFilteredData();
+            const industryData = d3.rollup(filtered, v => v.length, d => d.Industry);
             const data = Array.from(industryData, ([industry, count]) => ({ industry, count }))
                 .filter(d => d.industry !== 'Other')
                 .sort((a, b) => b.count - a.count);
@@ -1092,7 +1347,7 @@
                 .attr('rx', 3)
                 .on('mouseover', function(event, d) {
                     d3.select(this).attr('opacity', 1);
-                    const pct = ((d.count / DATA.length) * 100).toFixed(1);
+                    const pct = ((d.count / filtered.length) * 100).toFixed(1);
                     showTooltip(event, d.industry, d.count + ' unicorns', pct + '% of total');
                 })
                 .on('mouseout', function() {
@@ -1127,7 +1382,8 @@
             const margin = { top: 10, right: 50, bottom: 30, left: 160 };
 
             // Aggregate data
-            const industryData = d3.rollup(DATA, v => d3.sum(v, d => d.Valuation), d => d.Industry);
+            const filtered = getFilteredData();
+            const industryData = d3.rollup(filtered, v => d3.sum(v, d => d.Valuation), d => d.Industry);
             const data = Array.from(industryData, ([industry, valuation]) => ({ industry, valuation }))
                 .filter(d => d.industry !== 'Other')
                 .sort((a, b) => b.valuation - a.valuation);
@@ -1159,7 +1415,7 @@
                 .attr('rx', 3)
                 .on('mouseover', function(event, d) {
                     d3.select(this).attr('opacity', 1);
-                    const totalVal = d3.sum(DATA, x => x.Valuation);
+                    const totalVal = d3.sum(filtered, x => x.Valuation);
                     const pct = ((d.valuation / totalVal) * 100).toFixed(1);
                     showTooltip(event, d.industry, '$' + d.valuation.toFixed(1) + 'B', pct + '% of total valuation');
                 })
@@ -1195,7 +1451,8 @@
             const margin = { top: 20, right: 20, bottom: 80, left: 50 };
 
             // Aggregate data
-            const industryData = d3.rollup(DATA, v => d3.mean(v, d => d.Valuation), d => d.Industry);
+            const filtered = getFilteredData();
+            const industryData = d3.rollup(filtered, v => d3.mean(v, d => d.Valuation), d => d.Industry);
             const data = Array.from(industryData, ([industry, avg]) => ({ industry, avg }))
                 .filter(d => d.industry !== 'Other')
                 .sort((a, b) => b.avg - a.avg);
@@ -1272,12 +1529,13 @@
             const height = container.clientHeight || 280;
             const margin = { top: 20, right: 100, bottom: 40, left: 50 };
 
+            const filtered = getFilteredData();
             const topCountries = ['United States', 'China', 'India', 'United Kingdom', 'Germany'];
             const industries = Object.keys(INDUSTRY_COLORS).filter(i => i !== 'Other');
 
             // Prepare data
             const data = topCountries.map(country => {
-                const countryData = DATA.filter(d => d.Country === country);
+                const countryData = filtered.filter(d => d.Country === country);
                 const row = { country };
                 industries.forEach(ind => {
                     row[ind] = countryData.filter(d => d.Industry === ind).length;
@@ -1369,7 +1627,8 @@
             const margin = { top: 20, right: 30, bottom: 40, left: 50 };
 
             // Aggregate data
-            const yearData = d3.rollup(DATA, v => v.length, d => d.Year);
+            const filtered = getFilteredData();
+            const yearData = d3.rollup(filtered, v => v.length, d => d.Year);
             const data = Array.from(yearData, ([year, count]) => ({ year, count }))
                 .filter(d => d.year >= 2012)
                 .sort((a, b) => a.year - b.year);
@@ -1465,12 +1724,13 @@
             const height = container.clientHeight || 280;
             const margin = { top: 20, right: 100, bottom: 40, left: 50 };
 
+            const filtered = getFilteredData();
             const industries = ['Enterprise Tech', 'Financial Services', 'Consumer & Retail', 'Industrials', 'Healthcare & Life Sciences'];
             const years = d3.range(2015, 2026);
 
             // Prepare data
             const data = years.map(year => {
-                const yearData = DATA.filter(d => d.Year === year);
+                const yearData = filtered.filter(d => d.Year === year);
                 const row = { year };
                 industries.forEach(ind => {
                     row[ind] = yearData.filter(d => d.Industry === ind).length;
@@ -1558,7 +1818,8 @@
             const margin = { top: 20, right: 30, bottom: 40, left: 60 };
 
             // Aggregate data
-            const yearData = d3.rollup(DATA, v => d3.sum(v, d => d.Valuation), d => d.Year);
+            const filtered = getFilteredData();
+            const yearData = d3.rollup(filtered, v => d3.sum(v, d => d.Valuation), d => d.Year);
             const data = Array.from(yearData, ([year, valuation]) => ({ year, valuation }))
                 .filter(d => d.year >= 2012)
                 .sort((a, b) => a.year - b.year);
@@ -1620,7 +1881,8 @@
             const margin = { top: 20, right: 60, bottom: 40, left: 50 };
 
             // Aggregate data
-            const yearData = d3.rollup(DATA, v => ({ count: v.length, valuation: d3.sum(v, d => d.Valuation) }), d => d.Year);
+            const filtered = getFilteredData();
+            const yearData = d3.rollup(filtered, v => ({ count: v.length, valuation: d3.sum(v, d => d.Valuation) }), d => d.Year);
             let cumCount = 0, cumVal = 0;
             const data = Array.from(yearData, ([year, stats]) => ({ year, count: stats.count, valuation: stats.valuation }))
                 .filter(d => d.year >= 2012)
@@ -1727,7 +1989,8 @@
             const margin = { top: 10, right: 40, bottom: 30, left: 100 };
 
             // Aggregate data
-            const cityData = d3.rollup(DATA.filter(d => d.City), v => v.length, d => d.City);
+            const filtered = getFilteredData();
+            const cityData = d3.rollup(filtered.filter(d => d.City), v => v.length, d => d.City);
             const data = Array.from(cityData, ([city, count]) => ({ city, count }))
                 .sort((a, b) => b.count - a.count)
                 .slice(0, 15);
@@ -1759,7 +2022,7 @@
                 .attr('rx', 3)
                 .on('mouseover', function(event, d) {
                     d3.select(this).attr('opacity', 1);
-                    const pct = ((d.count / DATA.length) * 100).toFixed(1);
+                    const pct = ((d.count / filtered.length) * 100).toFixed(1);
                     showTooltip(event, d.city, d.count + ' unicorns', pct + '% of total');
                 })
                 .on('mouseout', function() {
@@ -1794,7 +2057,8 @@
             const margin = { top: 10, right: 50, bottom: 30, left: 100 };
 
             // Aggregate data
-            const cityData = d3.rollup(DATA.filter(d => d.City), v => d3.sum(v, d => d.Valuation), d => d.City);
+            const filtered = getFilteredData();
+            const cityData = d3.rollup(filtered.filter(d => d.City), v => d3.sum(v, d => d.Valuation), d => d.City);
             const data = Array.from(cityData, ([city, valuation]) => ({ city, valuation }))
                 .sort((a, b) => b.valuation - a.valuation)
                 .slice(0, 15);
@@ -1860,8 +2124,9 @@
             const margin = { top: 20, right: 30, bottom: 60, left: 50 };
 
             // Get top 5 cities for each country
-            const usData = DATA.filter(d => d.Country === 'United States' && d.City);
-            const cnData = DATA.filter(d => d.Country === 'China' && d.City);
+            const filtered = getFilteredData();
+            const usData = filtered.filter(d => d.Country === 'United States' && d.City);
+            const cnData = filtered.filter(d => d.Country === 'China' && d.City);
 
             const usCities = Array.from(d3.rollup(usData, v => v.length, d => d.City), ([city, count]) => ({ city, count }))
                 .sort((a, b) => b.count - a.count).slice(0, 5);
@@ -1954,7 +2219,8 @@
             const margin = { top: 20, right: 30, bottom: 40, left: 50 };
 
             // Aggregate data
-            const cityData = d3.rollup(DATA.filter(d => d.City),
+            const filtered = getFilteredData();
+            const cityData = d3.rollup(filtered.filter(d => d.City),
                 v => ({ count: v.length, valuation: d3.sum(v, d => d.Valuation), avg: d3.mean(v, d => d.Valuation) }),
                 d => d.City
             );
@@ -2392,6 +2658,7 @@
             const margin = { top: 20, right: 30, bottom: 50, left: 50 };
 
             // Create buckets
+            const filtered = getFilteredData();
             const buckets = [
                 { label: '1-2B', min: 1, max: 2 },
                 { label: '2-5B', min: 2, max: 5 },
@@ -2404,7 +2671,7 @@
 
             const data = buckets.map(b => ({
                 label: b.label,
-                count: DATA.filter(d => d.Valuation >= b.min && d.Valuation < b.max).length
+                count: filtered.filter(d => d.Valuation >= b.min && d.Valuation < b.max).length
             }));
 
             const svg = d3.select('#valuation-histogram-container')
@@ -2434,7 +2701,7 @@
                 .attr('rx', 3)
                 .on('mouseover', function(event, d) {
                     d3.select(this).attr('opacity', 1);
-                    const pct = ((d.count / DATA.length) * 100).toFixed(1);
+                    const pct = filtered.length > 0 ? ((d.count / filtered.length) * 100).toFixed(1) : '0';
                     showTooltip(event, d.label, d.count + ' unicorns', pct + '% of total');
                 })
                 .on('mouseout', function() {
@@ -2484,6 +2751,7 @@
             const radius = Math.min(width, height) / 2 - 40;
 
             // Create buckets with valuation sums
+            const filtered = getFilteredData();
             const buckets = [
                 { label: '1-2B', min: 1, max: 2 },
                 { label: '2-5B', min: 2, max: 5 },
@@ -2494,7 +2762,7 @@
 
             const data = buckets.map(b => ({
                 label: b.label,
-                value: d3.sum(DATA.filter(d => d.Valuation >= b.min && d.Valuation < b.max), d => d.Valuation)
+                value: d3.sum(filtered.filter(d => d.Valuation >= b.min && d.Valuation < b.max), d => d.Valuation)
             }));
 
             const totalVal = d3.sum(data, d => d.value);
@@ -2563,19 +2831,20 @@
             const height = container.clientHeight || 280;
             const margin = { top: 20, right: 30, bottom: 80, left: 50 };
 
+            const filtered = getFilteredData();
             const industries = ['Enterprise Tech', 'Financial Services', 'Consumer & Retail', 'Industrials', 'Healthcare & Life Sciences', 'Media & Entertainment'];
 
             const data = industries.map(ind => {
-                const vals = DATA.filter(d => d.Industry === ind).map(d => d.Valuation).sort((a, b) => a - b);
+                const vals = filtered.filter(d => d.Industry === ind).map(d => d.Valuation).sort((a, b) => a - b);
                 return {
                     industry: ind,
-                    min: d3.min(vals),
-                    median: d3.median(vals),
-                    max: d3.max(vals),
-                    q1: d3.quantile(vals, 0.25),
-                    q3: d3.quantile(vals, 0.75)
+                    min: d3.min(vals) || 0,
+                    median: d3.median(vals) || 0,
+                    max: d3.max(vals) || 0,
+                    q1: d3.quantile(vals, 0.25) || 0,
+                    q3: d3.quantile(vals, 0.75) || 0
                 };
-            });
+            }).filter(d => d.max > 0);
 
             const svg = d3.select('#valuation-range-container')
                 .append('svg')
@@ -2663,8 +2932,9 @@
             const margin = { top: 20, right: 30, bottom: 40, left: 50 };
 
             // Calculate age (years since becoming unicorn)
+            const filtered = getFilteredData();
             const now = new Date();
-            const data = DATA.filter(d => d.Year >= 2015).map(d => ({
+            const data = filtered.filter(d => d.Year >= 2015).map(d => ({
                 company: d.Company,
                 age: (now.getFullYear() - d.Year),
                 valuation: d.Valuation,
