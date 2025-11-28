@@ -1119,18 +1119,21 @@
                 .text(d => '$' + (d.valuation >= 1000 ? (d.valuation/1000).toFixed(1) + 'T' : d.valuation.toFixed(0) + 'B'));
         }
 
-        // 2c: Regional Distribution (doughnut)
+        // 2c: Regional Distribution (radial bar chart)
         function renderRegionDoughnut() {
             const container = document.getElementById('region-doughnut-container');
             const width = container.clientWidth;
             const height = container.clientHeight || 350;
-            const radius = Math.min(width, height) / 2 - 40;
+            const innerRadius = 50;
+            const outerRadius = Math.min(width, height) / 2 - 40;
 
             // Aggregate data
             const filtered = getFilteredData();
             const regionData = d3.rollup(filtered, v => v.length, d => d.Region);
             const data = Array.from(regionData, ([region, count]) => ({ region, count }))
                 .sort((a, b) => b.count - a.count);
+
+            if (data.length === 0) return;
 
             const svg = d3.select('#region-doughnut-container')
                 .append('svg')
@@ -1139,71 +1142,107 @@
                 .append('g')
                 .attr('transform', `translate(${width/2}, ${height/2})`);
 
-            const pie = d3.pie()
-                .value(d => d.count)
-                .sort(null);
+            // Scale for the radial bars
+            const maxCount = d3.max(data, d => d.count);
+            const angleScale = d3.scaleBand()
+                .domain(data.map(d => d.region))
+                .range([0, 2 * Math.PI])
+                .padding(0.12);
 
-            const arc = d3.arc()
-                .innerRadius(radius * 0.5)
-                .outerRadius(radius);
+            const radiusScale = d3.scaleLinear()
+                .domain([0, maxCount])
+                .range([innerRadius, outerRadius]);
 
-            const arcs = svg.selectAll('arc')
-                .data(pie(data))
-                .join('g');
+            // Create arc generator for radial bars
+            const arcGenerator = d3.arc()
+                .innerRadius(innerRadius)
+                .outerRadius(d => radiusScale(d.count))
+                .startAngle(d => angleScale(d.region))
+                .endAngle(d => angleScale(d.region) + angleScale.bandwidth())
+                .cornerRadius(3);
 
-            arcs.append('path')
-                .attr('d', arc)
-                .attr('fill', d => REGION_COLORS[d.data.region] || '#666')
+            // Draw circular grid lines
+            const gridValues = [0.25, 0.5, 0.75, 1];
+            svg.selectAll('.grid-circle')
+                .data(gridValues)
+                .join('circle')
+                .attr('class', 'grid-circle')
+                .attr('r', d => innerRadius + (outerRadius - innerRadius) * d)
+                .attr('fill', 'none')
+                .attr('stroke', '#2A2A28')
+                .attr('stroke-dasharray', '2,4');
+
+            // Draw radial bars
+            svg.selectAll('.radial-bar')
+                .data(data)
+                .join('path')
+                .attr('class', 'radial-bar')
+                .attr('d', arcGenerator)
+                .attr('fill', d => REGION_COLORS[d.region] || '#666')
                 .attr('opacity', 0.85)
-                .attr('stroke', '#1A1A18')
-                .attr('stroke-width', 2)
                 .on('mouseover', function(event, d) {
-                    d3.select(this).attr('opacity', 1);
-                    const pct = ((d.data.count / filtered.length) * 100).toFixed(1);
-                    showTooltip(event, d.data.region, d.data.count + ' unicorns', pct + '% of total');
+                    d3.select(this).attr('opacity', 1).attr('stroke', COLORS.lime).attr('stroke-width', 2);
+                    const pct = ((d.count / filtered.length) * 100).toFixed(1);
+                    showTooltip(event, d.region, d.count + ' unicorns', pct + '% of total');
                 })
                 .on('mouseout', function() {
-                    d3.select(this).attr('opacity', 0.85);
+                    d3.select(this).attr('opacity', 0.85).attr('stroke', 'none');
                     hideTooltip();
                 });
+
+            // Add region labels around the chart
+            svg.selectAll('.region-label')
+                .data(data)
+                .join('text')
+                .attr('class', 'region-label')
+                .attr('transform', d => {
+                    const angle = angleScale(d.region) + angleScale.bandwidth() / 2 - Math.PI / 2;
+                    const labelRadius = outerRadius + 20;
+                    return `translate(${labelRadius * Math.cos(angle)}, ${labelRadius * Math.sin(angle)})`;
+                })
+                .attr('text-anchor', d => {
+                    const angle = angleScale(d.region) + angleScale.bandwidth() / 2;
+                    return angle > Math.PI ? 'end' : angle < Math.PI && angle > 0 ? 'start' : 'middle';
+                })
+                .attr('dy', '0.35em')
+                .attr('fill', d => REGION_COLORS[d.region] || COLORS.textTertiary)
+                .attr('font-size', '10px')
+                .attr('font-weight', '500')
+                .text(d => d.region);
+
+            // Add count labels on bars
+            svg.selectAll('.count-label')
+                .data(data)
+                .join('text')
+                .attr('class', 'count-label')
+                .attr('transform', d => {
+                    const angle = angleScale(d.region) + angleScale.bandwidth() / 2 - Math.PI / 2;
+                    const labelRadius = innerRadius + (radiusScale(d.count) - innerRadius) / 2;
+                    return `translate(${labelRadius * Math.cos(angle)}, ${labelRadius * Math.sin(angle)})`;
+                })
+                .attr('text-anchor', 'middle')
+                .attr('dy', '0.35em')
+                .attr('fill', COLORS.textPrimary)
+                .attr('font-size', '11px')
+                .attr('font-weight', '600')
+                .text(d => d.count);
 
             // Center label
             svg.append('text')
                 .attr('text-anchor', 'middle')
-                .attr('dy', '-0.5em')
+                .attr('dy', '-0.2em')
                 .attr('fill', COLORS.textPrimary)
-                .attr('font-size', '24px')
+                .attr('font-size', '26px')
                 .attr('font-weight', '700')
                 .text(filtered.length);
 
             svg.append('text')
                 .attr('text-anchor', 'middle')
-                .attr('dy', '1.2em')
+                .attr('dy', '1.4em')
                 .attr('fill', COLORS.textTertiary)
-                .attr('font-size', '12px')
+                .attr('font-size', '9px')
+                .attr('letter-spacing', '1px')
                 .text('UNICORNS');
-
-            // Legend - centered at bottom
-            const legendData = data.slice(0, 6);
-            const legendSpacing = 90;
-            const legendStartX = -(legendData.length * legendSpacing) / 2 + legendSpacing / 2;
-
-            const legend = svg.selectAll('.legend')
-                .data(legendData)
-                .join('g')
-                .attr('class', 'legend')
-                .attr('transform', (d, i) => `translate(${legendStartX + i * legendSpacing}, ${radius + 30})`);
-
-            legend.append('circle')
-                .attr('r', 5)
-                .attr('fill', d => REGION_COLORS[d.region] || '#666');
-
-            legend.append('text')
-                .attr('x', 10)
-                .attr('y', 4)
-                .attr('fill', COLORS.textTertiary)
-                .attr('font-size', '10px')
-                .text(d => d.region);
         }
 
         // 2d: Country scatter (count vs valuation)
