@@ -575,7 +575,7 @@
                 </div>
                 <div class="chart-card">
                     <h3 class="chart-title">Investor Categories</h3>
-                    <p class="chart-subtitle">Distribution by investor type</p>
+                    <p class="chart-subtitle">Each icon = 100 investments (pictogram)</p>
                     <div class="chart-container" id="investor-type-container"></div>
                 </div>
                 <div class="chart-card">
@@ -2508,12 +2508,12 @@
                 .text(d => d.count);
         }
 
-        // 6b: Investor Categories (doughnut)
+        // 6b: Investor Categories (Pictogram Array)
         function renderInvestorType() {
             const container = document.getElementById('investor-type-container');
             const width = container.clientWidth;
             const height = container.clientHeight || 350;
-            const radius = Math.min(width, height) / 2 - 40;
+            const margin = { top: 30, right: 20, bottom: 60, left: 20 };
 
             const investorMap = parseInvestors(DATA);
 
@@ -2529,69 +2529,88 @@
             });
 
             const data = [
-                { type: 'Venture Capital', count: vcCount },
-                { type: 'Corporate/Strategic', count: corpCount },
-                { type: 'Other', count: otherCount }
+                { type: 'Venture Capital', count: vcCount, color: COLORS.cyan },
+                { type: 'Corporate/Strategic', count: corpCount, color: COLORS.amber },
+                { type: 'Other Investors', count: otherCount, color: COLORS.textTertiary }
             ];
 
-            const colors = [COLORS.cyan, COLORS.amber, COLORS.textTertiary];
+            // Create icon array - each icon represents 100 investments
+            const iconValue = 100;
+            const iconSize = 18;
+            const iconPadding = 4;
+            const iconsPerRow = Math.floor((width - margin.left - margin.right) / (iconSize + iconPadding));
+
+            // Build array of icons
+            const icons = [];
+            data.forEach(d => {
+                const numIcons = Math.round(d.count / iconValue);
+                for (let i = 0; i < numIcons; i++) {
+                    icons.push({ type: d.type, color: d.color, count: d.count });
+                }
+            });
 
             const svg = d3.select('#investor-type-container')
                 .append('svg')
                 .attr('width', width)
-                .attr('height', height)
-                .append('g')
-                .attr('transform', `translate(${width/2 - 30}, ${height/2})`);
+                .attr('height', height);
 
-            const pie = d3.pie()
-                .value(d => d.count)
-                .sort(null);
+            const g = svg.append('g')
+                .attr('transform', `translate(${margin.left}, ${margin.top})`);
 
-            const arc = d3.arc()
-                .innerRadius(radius * 0.5)
-                .outerRadius(radius);
-
-            const arcs = svg.selectAll('arc')
-                .data(pie(data))
-                .join('g');
-
-            arcs.append('path')
-                .attr('d', arc)
-                .attr('fill', (d, i) => colors[i])
-                .attr('opacity', 0.85)
-                .attr('stroke', '#1A1A18')
-                .attr('stroke-width', 2)
+            // Draw icons as rounded squares (representing people/investors)
+            g.selectAll('.icon')
+                .data(icons)
+                .join('rect')
+                .attr('class', 'icon')
+                .attr('x', (d, i) => (i % iconsPerRow) * (iconSize + iconPadding))
+                .attr('y', (d, i) => Math.floor(i / iconsPerRow) * (iconSize + iconPadding))
+                .attr('width', iconSize)
+                .attr('height', iconSize)
+                .attr('rx', 4)
+                .attr('fill', d => d.color)
+                .attr('opacity', 0.8)
                 .on('mouseover', function(event, d) {
-                    d3.select(this).attr('opacity', 1);
+                    d3.select(this).attr('opacity', 1).attr('stroke', COLORS.lime).attr('stroke-width', 2);
                     const total = d3.sum(data, x => x.count);
-                    const pct = ((d.data.count / total) * 100).toFixed(1);
-                    showTooltip(event, d.data.type, d.data.count + ' investments', pct + '% of total');
+                    const pct = ((d.count / total) * 100).toFixed(1);
+                    showTooltip(event, d.type, d.count.toLocaleString() + ' investments', pct + '% of total');
                 })
                 .on('mouseout', function() {
-                    d3.select(this).attr('opacity', 0.85);
+                    d3.select(this).attr('opacity', 0.8).attr('stroke', 'none');
                     hideTooltip();
                 });
 
-            // Legend - centered at bottom
-            const legendSpacing = 100;
-            const legendStartX = -(data.length * legendSpacing) / 2 + legendSpacing / 2;
+            // Legend at bottom
+            const legendY = height - margin.bottom + 20;
+            const legendSpacing = (width - margin.left - margin.right) / data.length;
 
-            const legend = svg.selectAll('.legend')
-                .data(data)
-                .join('g')
-                .attr('class', 'legend')
-                .attr('transform', (d, i) => `translate(${legendStartX + i * legendSpacing}, ${radius + 30})`);
+            const legend = svg.append('g')
+                .attr('transform', `translate(${margin.left}, ${legendY})`);
 
-            legend.append('circle')
-                .attr('r', 5)
-                .attr('fill', (d, i) => colors[i]);
+            data.forEach((d, i) => {
+                const legendItem = legend.append('g')
+                    .attr('transform', `translate(${i * legendSpacing + legendSpacing/2 - 50}, 0)`);
 
-            legend.append('text')
-                .attr('x', 10)
-                .attr('y', 4)
-                .attr('fill', COLORS.textSecondary)
-                .attr('font-size', '11px')
-                .text(d => d.type);
+                legendItem.append('circle')
+                    .attr('r', 5)
+                    .attr('fill', d.color);
+
+                legendItem.append('text')
+                    .attr('x', 10)
+                    .attr('y', 4)
+                    .attr('fill', COLORS.textSecondary)
+                    .attr('font-size', '10px')
+                    .text(d.type + ' (' + Math.round(d.count / iconValue) + ')');
+            });
+
+            // Scale label
+            svg.append('text')
+                .attr('x', width / 2)
+                .attr('y', height - 5)
+                .attr('text-anchor', 'middle')
+                .attr('fill', COLORS.textTertiary)
+                .attr('font-size', '9px')
+                .text('1 square = ' + iconValue + ' investments');
         }
 
         // 6c: Top Investor Diversification (grouped bar - replacing radar)
