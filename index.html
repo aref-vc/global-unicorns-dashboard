@@ -1435,12 +1435,12 @@
                 .attr('fill', d => INDUSTRY_COLORS[d.industry] || COLORS.textTertiary)
                 .attr('font-size', '10px')
                 .attr('font-weight', '500')
-                .each(function(d) {
+                .text(d => {
+                    if (!d.industry) return '';
                     // Truncate label if bar is too narrow
-                    const label = d.width > 80 ? d.industry :
-                                  d.width > 50 ? d.industry.split(' ')[0] :
-                                  d.industry.substring(0, 3);
-                    d3.select(this).text(label);
+                    return d.width > 80 ? d.industry :
+                           d.width > 50 ? d.industry.split(' ')[0] :
+                           d.industry.substring(0, 3);
                 });
 
             // Count labels at bottom
