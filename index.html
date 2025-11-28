@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Unicorn Dashboard | CB Insights 2025</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        @font-face {
+            font-family: 'Berkeley Mono';
+            src: local('Berkeley Mono');
+        }
+
+        :root {
+            --font-family: 'Berkeley Mono', 'SF Mono', 'Fira Code', monospace;
+            --bg-main: #10100E;
+            --bg-main-rgb: 16, 16, 14;
+            --bg-elevated: #1A1A18;
+            --bg-elevated-rgb: 26, 26, 24;
+            --bg-accent: #242422;
+            --bg-accent-rgb: 36, 36, 34;
+            --text-primary: #FFFFE3;
+            --text-primary-rgb: 255, 255, 227;
+            --text-secondary: #E6E6CE;
+            --text-secondary-rgb: 230, 230, 206;
+            --text-tertiary: #B3B3A3;
+            --text-tertiary-rgb: 179, 179, 163;
+            --lime: #BEFF00;
+            --lime-rgb: 190, 255, 0;
+            --cyan: #00BAFE;
+            --cyan-rgb: 0, 186, 254;
+            --amber: #FFC000;
+            --amber-rgb: 255, 192, 0;
+            --emerald: #00DE71;
+            --emerald-rgb: 0, 222, 113;
+            --coral: #F04E50;
+            --coral-rgb: 240, 78, 80;
+            --border: #2A2A28;
+            --border-rgb: 42, 42, 40;
+            --border-light: #3A3A38;
+            --border-light-rgb: 58, 58, 56;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background: var(--bg-main);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            padding: 32px 48px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .header h1 span {
+            color: var(--lime);
+        }
+
+        .header p {
+            color: var(--text-tertiary);
+            font-size: 14px;
+        }
+
+        /* Main container */
+        .dashboard {
+            padding: 24px 48px 48px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        /* Section styling */
+        .section {
+            margin-bottom: 48px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-number {
+            background: var(--lime);
+            color: var(--bg-main);
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Grid layouts */
+        .grid-2x2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        /* Chart card */
+        .chart-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            min-height: 360px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-card.full-width {
+            grid-column: span 2;
+        }
+
+        .chart-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .chart-subtitle {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-bottom: 16px;
+        }
+
+        .chart-container {
+            flex: 1;
+            position: relative;
+            min-height: 280px;
+        }
+
+        .chart-container svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* KPI Cards */
+        .kpi-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .kpi-label {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .kpi-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .kpi-value.lime { color: var(--lime); }
+        .kpi-value.cyan { color: var(--cyan); }
+        .kpi-value.amber { color: var(--amber); }
+        .kpi-value.emerald { color: var(--emerald); }
+
+        .kpi-change {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background: var(--bg-accent);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 1000;
+            max-width: 280px;
+        }
+
+        .tooltip-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .tooltip-value {
+            color: var(--lime);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .tooltip-detail {
+            color: var(--text-tertiary);
+            margin-top: 4px;
+        }
+
+        /* D3 axis styling */
+        .axis text {
+            fill: var(--text-tertiary);
+            font-family: var(--font-family);
+            font-size: 11px;
+        }
+
+        .axis line,
+        .axis path {
+            stroke: var(--border);
+        }
+
+        .axis-label {
+            fill: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .grid-2x2 {
+                grid-template-columns: 1fr;
+            }
+            .grid-4 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .chart-card.full-width {
+                grid-column: span 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 24px;
+            }
+            .dashboard {
+                padding: 16px 24px 32px;
+            }
+            .grid-4 {
+                grid-template-columns: 1fr;
+            }
+            .kpi-value {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>Global <span>Unicorn</span> Dashboard</h1>
+        <p>CB Insights Global Unicorn Club — Private Companies Valued at $1B+ (as of October 7th, 2025)</p>
+    </header>
+
+    <main class="dashboard">
+        <!-- Section 1: Executive Overview -->
+        <section class="section" id="section-overview">
+            <div class="section-header">
+                <div class="section-number">1</div>
+                <h2 class="section-title">Executive Overview</h2>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="grid-4" id="kpi-cards">
+                <div class="kpi-card">
+                    <span class="kpi-label">Total Unicorns</span>
+                    <span class="kpi-value lime" id="kpi-count">—</span>
+                    <span class="kpi-change">Private companies valued at $1B+</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Total Valuation</span>
+                    <span class="kpi-value cyan" id="kpi-valuation">—</span>
+                    <span class="kpi-change">Combined market value</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Average Valuation</span>
+                    <span class="kpi-value amber" id="kpi-avg">—</span>
+                    <span class="kpi-change">Per unicorn company</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Countries</span>
+                    <span class="kpi-value emerald" id="kpi-countries">—</span>
+                    <span class="kpi-change">Global distribution</span>
+                </div>
+            </div>
+
+            <!-- Treemap -->
+            <div class="grid-2x2" style="margin-top: 24px;">
+                <div class="chart-card full-width">
+                    <h3 class="chart-title">Top 20 Unicorns by Valuation</h3>
+                    <p class="chart-subtitle">Size represents valuation in billions USD</p>
+                    <div class="chart-container" id="treemap-container"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Geographic Analysis -->
+        <section class="section" id="section-geography">
+            <div class="section-header">
+                <div class="section-number">2</div>
+                <h2 class="section-title">Geographic Analysis</h2>
+            </div>
+            <div class="grid-2x2">
+                <div class="chart-card">
+                    <h3 class="chart-title">Countries by Unicorn Count</h3>
+                    <p class="chart-subtitle">Top 15 countries with most unicorns</p>
+                    <div class="chart-container" id="country-count-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Countries by Total Valuation</h3>
+                    <p class="chart-subtitle">Top 15 countries by combined valuation ($B)</p>
+                    <div class="chart-container" id="country-valuation-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Regional Distribution</h3>
+                    <p class="chart-subtitle">Unicorns by world region</p>
+                    <div class="chart-container" id="region-doughnut-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Country Analysis</h3>
+                    <p class="chart-subtitle">Count vs Total Valuation (bubble = avg valuation)</p>
+                    <div class="chart-container" id="country-scatter-container"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Industry Breakdown -->
+        <section class="section" id="section-industry">
+            <div class="section-header">
+                <div class="section-number">3</div>
+                <h2 class="section-title">Industry Breakdown</h2>
+            </div>
+            <div class="grid-2x2">
+                <div class="chart-card">
+                    <h3 class="chart-title">Unicorns by Industry</h3>
+                    <p class="chart-subtitle">Number of companies per sector</p>
+                    <div class="chart-container" id="industry-count-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Valuation by Industry</h3>
+                    <p class="chart-subtitle">Total valuation per sector ($B)</p>
+                    <div class="chart-container" id="industry-valuation-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Average Valuation by Industry</h3>
+                    <p class="chart-subtitle">Mean company valuation per sector ($B)</p>
+                    <div class="chart-container" id="industry-avg-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Industry by Top Countries</h3>
+                    <p class="chart-subtitle">Sector distribution across top 5 countries</p>
+                    <div class="chart-container" id="industry-country-container"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Temporal Analysis -->
+        <section class="section" id="section-temporal">
+            <div class="section-header">
+                <div class="section-number">4</div>
+                <h2 class="section-title">Temporal Analysis</h2>
+            </div>
+            <div class="grid-2x2">
+                <div class="chart-card">
+                    <h3 class="chart-title">Unicorn Births by Year</h3>
+                    <p class="chart-subtitle">New unicorns created each year</p>
+                    <div class="chart-container" id="year-count-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Industry Trends Over Time</h3>
+                    <p class="chart-subtitle">Sector growth patterns by year</p>
+                    <div class="chart-container" id="industry-trend-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Valuation Added by Year</h3>
+                    <p class="chart-subtitle">Total new valuation created ($B)</p>
+                    <div class="chart-container" id="year-valuation-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Cumulative Growth</h3>
+                    <p class="chart-subtitle">Running total of unicorns and valuation</p>
+                    <div class="chart-container" id="cumulative-container"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: City & Hub Analysis -->
+        <section class="section" id="section-cities">
+            <div class="section-header">
+                <div class="section-number">5</div>
+                <h2 class="section-title">City & Hub Analysis</h2>
+            </div>
+            <div class="grid-2x2">
+                <div class="chart-card">
+                    <h3 class="chart-title">Top Cities by Unicorn Count</h3>
+                    <p class="chart-subtitle">Leading startup hubs worldwide</p>
+                    <div class="chart-container" id="city-count-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Top Cities by Valuation</h3>
+                    <p class="chart-subtitle">Cities with highest combined value ($B)</p>
+                    <div class="chart-container" id="city-valuation-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">US vs China: Top Cities</h3>
+                    <p class="chart-subtitle">Comparing leading hubs in both nations</p>
+                    <div class="chart-container" id="us-china-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">City Metrics</h3>
+                    <p class="chart-subtitle">Count vs Avg Valuation (bubble = total value)</p>
+                    <div class="chart-container" id="city-bubble-container"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Investor Intelligence -->
+        <section class="section" id="section-investors">
+            <div class="section-header">
+                <div class="section-number">6</div>
+                <h2 class="section-title">Investor Intelligence</h2>
+            </div>
+            <div class="grid-2x2">
+                <div class="chart-card">
+                    <h3 class="chart-title">Most Active Investors</h3>
+                    <p class="chart-subtitle">Top 15 investors by portfolio count</p>
+                    <div class="chart-container" id="investor-count-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Investor Categories</h3>
+                    <p class="chart-subtitle">Distribution by investor type</p>
+                    <div class="chart-container" id="investor-type-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Top Investor Diversification</h3>
+                    <p class="chart-subtitle">Industry spread of top 5 investors</p>
+                    <div class="chart-container" id="investor-radar-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Portfolio Value by Investor</h3>
+                    <p class="chart-subtitle">Average valuation of portfolio companies ($B)</p>
+                    <div class="chart-container" id="investor-value-container"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 7: Valuation Distribution -->
+        <section class="section" id="section-valuation">
+            <div class="section-header">
+                <div class="section-number">7</div>
+                <h2 class="section-title">Valuation Distribution</h2>
+            </div>
+            <div class="grid-2x2">
+                <div class="chart-card">
+                    <h3 class="chart-title">Valuation Buckets</h3>
+                    <p class="chart-subtitle">Distribution of unicorns by value range</p>
+                    <div class="chart-container" id="valuation-histogram-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Value Concentration</h3>
+                    <p class="chart-subtitle">Share of total value by bucket</p>
+                    <div class="chart-container" id="valuation-pie-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Valuation Range by Industry</h3>
+                    <p class="chart-subtitle">Min, median, max valuations per sector</p>
+                    <div class="chart-container" id="valuation-range-container"></div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Age vs Valuation</h3>
+                    <p class="chart-subtitle">Years since unicorn status vs current value</p>
+                    <div class="chart-container" id="age-valuation-container"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // Global data and utilities
+        let DATA = [];
+        const tooltip = d3.select('#tooltip');
+
+        // Color palettes
+        const COLORS = {
+            lime: '#BEFF00',
+            cyan: '#00BAFE',
+            amber: '#FFC000',
+            emerald: '#00DE71',
+            coral: '#F04E50',
+            textSecondary: '#E6E6CE',
+            textTertiary: '#B3B3A3'
+        };
+
+        const INDUSTRY_COLORS = {
+            'Enterprise Tech': COLORS.cyan,
+            'Financial Services': COLORS.amber,
+            'Consumer & Retail': COLORS.emerald,
+            'Industrials': COLORS.lime,
+            'Healthcare & Life Sciences': COLORS.coral,
+            'Media & Entertainment': COLORS.textSecondary,
+            'Insurance': COLORS.textTertiary,
+            'Other': '#666666'
+        };
+
+        const REGION_COLORS = {
+            'North America': COLORS.cyan,
+            'Asia': COLORS.amber,
+            'Europe': COLORS.emerald,
+            'Latin America': COLORS.lime,
+            'Middle East': COLORS.coral,
+            'Oceania': COLORS.textSecondary,
+            'Africa': COLORS.textTertiary,
+            'Other': '#666666'
+        };
+
+        // Region mapping
+        const REGION_MAP = {
+            'United States': 'North America', 'Canada': 'North America', 'Mexico': 'North America',
+            'China': 'Asia', 'India': 'Asia', 'Japan': 'Asia', 'South Korea': 'Asia', 'Singapore': 'Asia',
+            'Indonesia': 'Asia', 'Hong Kong': 'Asia', 'Thailand': 'Asia', 'Malaysia': 'Asia', 'Vietnam': 'Asia',
+            'Philippines': 'Asia', 'Taiwan': 'Asia', 'Bangladesh': 'Asia',
+            'United Kingdom': 'Europe', 'Germany': 'Europe', 'France': 'Europe', 'Netherlands': 'Europe',
+            'Ireland': 'Europe', 'Switzerland': 'Europe', 'Sweden': 'Europe', 'Finland': 'Europe',
+            'Belgium': 'Europe', 'Austria': 'Europe', 'Denmark': 'Europe', 'Norway': 'Europe',
+            'Spain': 'Europe', 'Italy': 'Europe', 'Luxembourg': 'Europe', 'Estonia': 'Europe',
+            'Portugal': 'Europe', 'Poland': 'Europe', 'Czech Republic': 'Europe', 'Romania': 'Europe',
+            'Lithuania': 'Europe', 'Croatia': 'Europe', 'Cyprus': 'Europe', 'Greece': 'Europe',
+            'Israel': 'Middle East', 'United Arab Emirates': 'Middle East', 'Saudi Arabia': 'Middle East',
+            'Turkey': 'Middle East', 'Egypt': 'Middle East', 'Bahrain': 'Middle East', 'Qatar': 'Middle East',
+            'Brazil': 'Latin America', 'Argentina': 'Latin America', 'Chile': 'Latin America',
+            'Colombia': 'Latin America', 'Peru': 'Latin America',
+            'Australia': 'Oceania', 'New Zealand': 'Oceania',
+            'Nigeria': 'Africa', 'South Africa': 'Africa', 'Kenya': 'Africa', 'Senegal': 'Africa'
+        };
+
+        // Utility functions
+        function formatNumber(n) {
+            if (n >= 1000) return (n / 1000).toFixed(1) + 'T';
+            if (n >= 1) return n.toFixed(1) + 'B';
+            return (n * 1000).toFixed(0) + 'M';
+        }
+
+        function formatCount(n) {
+            return n.toLocaleString();
+        }
+
+        function showTooltip(event, title, value, detail = '') {
+            tooltip.style('opacity', 1)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px')
+                .html(`
+                    <div class="tooltip-title">${title}</div>
+                    <div class="tooltip-value">${value}</div>
+                    ${detail ? `<div class="tooltip-detail">${detail}</div>` : ''}
+                `);
+        }
+
+        function hideTooltip() {
+            tooltip.style('opacity', 0);
+        }
+
+        function getRegion(country) {
+            return REGION_MAP[country] || 'Other';
+        }
+
+        // Load data and initialize
+        async function init() {
+            try {
+                const response = await fetch('unicorn_data.json');
+                DATA = await response.json();
+
+                // Enrich data
+                DATA.forEach(d => {
+                    d.Year = new Date(d.DateJoined).getFullYear();
+                    d.Region = getRegion(d.Country);
+                });
+
+                // Render all sections
+                renderKPIs();
+                renderTreemap();
+
+                console.log('Dashboard initialized with', DATA.length, 'unicorns');
+            } catch (error) {
+                console.error('Failed to load data:', error);
+            }
+        }
+
+        // Section 1: KPIs
+        function renderKPIs() {
+            const totalCount = DATA.length;
+            const totalValuation = d3.sum(DATA, d => d.Valuation);
+            const avgValuation = totalValuation / totalCount;
+            const countryCount = new Set(DATA.map(d => d.Country)).size;
+
+            document.getElementById('kpi-count').textContent = formatCount(totalCount);
+            document.getElementById('kpi-valuation').textContent = '$' + formatNumber(totalValuation);
+            document.getElementById('kpi-avg').textContent = '$' + avgValuation.toFixed(2) + 'B';
+            document.getElementById('kpi-countries').textContent = countryCount;
+        }
+
+        // Section 1: Treemap
+        function renderTreemap() {
+            const container = document.getElementById('treemap-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight || 300;
+
+            // Get top 20 by valuation
+            const top20 = DATA.slice().sort((a, b) => b.Valuation - a.Valuation).slice(0, 20);
+
+            const svg = d3.select('#treemap-container')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const root = d3.hierarchy({ children: top20 })
+                .sum(d => d.Valuation);
+
+            d3.treemap()
+                .size([width, height])
+                .padding(2)
+                .round(true)(root);
+
+            const cell = svg.selectAll('g')
+                .data(root.leaves())
+                .join('g')
+                .attr('transform', d => `translate(${d.x0},${d.y0})`);
+
+            cell.append('rect')
+                .attr('width', d => d.x1 - d.x0)
+                .attr('height', d => d.y1 - d.y0)
+                .attr('fill', d => INDUSTRY_COLORS[d.data.Industry] || COLORS.textTertiary)
+                .attr('opacity', 0.85)
+                .attr('rx', 4)
+                .style('cursor', 'pointer')
+                .on('mouseover', function(event, d) {
+                    d3.select(this).attr('opacity', 1);
+                    showTooltip(event, d.data.Company, '$' + d.data.Valuation + 'B',
+                        `${d.data.Industry}<br>${d.data.Country}`);
+                })
+                .on('mouseout', function() {
+                    d3.select(this).attr('opacity', 0.85);
+                    hideTooltip();
+                });
+
+            // Add labels for cells large enough
+            cell.filter(d => (d.x1 - d.x0) > 60 && (d.y1 - d.y0) > 30)
+                .append('text')
+                .attr('x', 6)
+                .attr('y', 16)
+                .attr('fill', '#10100E')
+                .attr('font-size', '11px')
+                .attr('font-weight', '600')
+                .text(d => d.data.Company.length > 12 ? d.data.Company.slice(0, 10) + '...' : d.data.Company);
+
+            cell.filter(d => (d.x1 - d.x0) > 60 && (d.y1 - d.y0) > 45)
+                .append('text')
+                .attr('x', 6)
+                .attr('y', 30)
+                .attr('fill', '#10100E')
+                .attr('font-size', '10px')
+                .attr('opacity', 0.8)
+                .text(d => '$' + d.data.Valuation + 'B');
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
